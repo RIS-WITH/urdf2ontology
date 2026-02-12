@@ -1,4 +1,4 @@
-from VotingTask import *
+from tasks.VotingTask import VotingTask
 
 from collections import defaultdict, Counter
 from typing import List, Dict, Tuple

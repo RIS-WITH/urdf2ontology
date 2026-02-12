@@ -1,5 +1,5 @@
-from VotingTask import *
-from typing import List, Dict, Tuple
+from tasks.VotingTask import VotingTask
+from typing import List, Dict, Tuple, Any
 
 import json
 from collections import defaultdict, Counter

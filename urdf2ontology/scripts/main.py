@@ -1,11 +1,17 @@
+#!/usr/bin/env python3
+
 from urdf_tree import URDFTree
 
 from LLMInterface import LLMInterface
 
+from tasks.SensorLinkIdentificationTask import SensorLinkIdentificationTask
+from tasks.SensorLinkMountingPointTask import SensorLinkMountingPointTask
+from tasks.SensorLinkGroupingTask import SensorLinkGroupingTask
+from tasks.SensorLinkClassificationTask import SensorLinkClassificationTask
+from tasks.SensorLinkAbstractingTask import SensorLinkAbstractingTask
+from tasks.SensorLinkSplittingTask import SensorLinkSplittingTask
 
-from tasks import SensorLinkIdentificationTask, SensorLinkMountingPointTask, SensorLinkGroupingTask, SensorLinkClassificationTask, SensorLinkAbstractingTask, SensorLinkSplittingTask
-
-import AbstractedRobotLinks
+from AbstractedRobotLinks import AbstractedRobotLinks
 
 # small_models = ["gemma3:4b", "mistral:7b", "llama3:8b"]
 # average_models = ["gemma2:9b", "gemma3:12b", "mistral-nemo", "phi3:14b"]
@@ -17,9 +23,9 @@ sensor_subclasses = {"Bumper", "Sonar", "Camera", "Accelerometer", "Gyroscope", 
 camera_subclasses = {"ColorCamera", "RGBCamera", "DepthCamera", "InfraRedCamera", "StereoCamera", "MonochromeCamera"}
 
 # ================= ROBOT URDF ============
-robot_path = '/home/bdussard/ros2_ws/src/urdf2ontology/urdf/pr2.urdf'
+robot_path = '../urdf/pr2.urdf'
 urdf_tree = URDFTree(robot_path)
-abstracted_robot = AbstractedRobotLinks.AbstractedRobotLinks("pr2", robot_path, urdf_tree)
+abstracted_robot = AbstractedRobotLinks("pr2", robot_path, urdf_tree)
 
 robot_leaf_links = urdf_tree.get_leaf_links()
 leaf_links_str = [leaf.name for leaf in robot_leaf_links]

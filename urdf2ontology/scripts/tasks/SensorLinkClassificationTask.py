@@ -1,4 +1,4 @@
-from VotingTask import *
+from tasks.VotingTask import VotingTask
 
 import json
 from typing import Tuple, List, Dict
