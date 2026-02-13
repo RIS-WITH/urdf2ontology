@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Any, List
 
 class VotingTask(ABC):
-    def __init__(self, json_format):
-       self.json_format = json_format
+    def __init__(self, nb_runs, keyword):
+        self.nb_runs = nb_runs
+        self.keyword = keyword
        
     # @abstractmethod
     # def prompt(self, user_input: str) -> str:
