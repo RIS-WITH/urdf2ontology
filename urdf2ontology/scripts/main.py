@@ -10,17 +10,25 @@ from tasks.SensorLinkGroupingTask import SensorLinkGroupingTask
 from tasks.SensorLinkClassificationTask import SensorLinkClassificationTask
 from tasks.SensorLinkAbstractingTask import SensorLinkAbstractingTask
 from tasks.SensorLinkSplittingTask import SensorLinkSplittingTask
+from tasks.SensorAbstractingAllInOne import SensorAbstractingAllInOne
+
+from tasks.ComponentLinkIdentificationTask import ComponentLinkIdentificationTask
+from tasks.ComponentLinkMountingPointTask import ComponentLinkMountingPointTask 
+from tasks.ComponentLinkGroupingTask import ComponentLinkGroupingTask
+from tasks.ComponentLinkClassificationTask import ComponentLinkClassificationTask
 
 from AbstractedRobotLinks import AbstractedRobotLinks
+
+from component_ontologies import *
 
 # small_models = ["gemma3:4b", "mistral:7b", "llama3:8b"]
 # average_models = ["gemma2:9b", "gemma3:12b", "mistral-nemo", "phi3:14b"]
 # models_thinking = ["gpt-oss:20b", "qwen3:14b", "deepseek-r1:14b"]
 
 # ========= DUMMY DATA ==========
-sensor_subclasses = {"Bumper", "Sonar", "Camera", "Accelerometer", "Gyroscope", "TactileArea", "Laser", "IMU", "Microphone"}
+# sensor_subclasses = {"Bumper", "Sonar", "Camera", "Accelerometer", "Gyroscope", "TactileArea", "Laser", "IMU", "Microphone"}
 
-camera_subclasses = {"ColorCamera", "RGBCamera", "DepthCamera", "InfraRedCamera", "StereoCamera", "MonochromeCamera"}
+# camera_subclasses = {"ColorCamera", "RGBCamera", "DepthCamera", "InfraRedCamera", "StereoCamera", "MonochromeCamera"}
 
 # ================= ROBOT URDF ============
 robot_path = '../urdf/pr2.urdf'
@@ -39,42 +47,83 @@ deepseek_thinking = "deepseek-r1:14b"
 
 llm_module = LLMInterface(model=gpt_thinking, temperature=0.7)
 
-# ================= PIPELINE ============
-# Get all the paths from a given node to its connected leaf nodes
-# all_chains = urdf_tree.get_all_chain_names(urdf_tree.get_link('sensor_mount_link'))
-
-# ========= IDENTIFICATION =======
+# ========= REFINED PIPELINE =======
+print("REFINED")
 # ==== Identify sensor links based on leaf names (restrict the subset of links)
-sensor_identif = SensorLinkIdentificationTask(nb_runs=1)
+sensor_identif = ComponentLinkIdentificationTask(nb_runs=1, keyword="sensor", definition=definitions_dict["sensor"])
 result_identif = llm_module.run_task(sensor_identif, robot_leaf_links_dict, verbose=False)
 print("<==== 1. IDENTIFIED SENSOR LINKS ====>")
 print(result_identif)
 
-abstracted_robot.add_identified_sensor_links(result_identif)
+abstracted_robot.add_identified_component_links(result_identif, "sensor")
 
-# ========= MOUNTING POINT =======
-sensor_mounting = SensorLinkMountingPointTask(nb_runs=1)
+sensor_mounting = ComponentLinkMountingPointTask(nb_runs=1, keyword="sensor", definition=definitions_dict["sensor"])
 result_mounting = llm_module.run_task(sensor_mounting, abstracted_robot.sensor_links.initial_chains, verbose=False)
 print("<==== 2. IDENTIFIED SENSOR MOUNTING POINTS ====>")
 print(result_mounting)
 
-abstracted_robot.add_trimmed_sensor_chains(result_mounting)
+abstracted_robot.add_trimmed_component_chains(result_mounting, "sensor")
 
-# ========= GROUPING =======
-sensor_grouping = SensorLinkGroupingTask(nb_runs=1)
+sensor_grouping = ComponentLinkGroupingTask(nb_runs=1, keyword="sensor")
 result_grouping = llm_module.run_task(sensor_grouping, abstracted_robot.sensor_links.trimmed_chains, verbose=False)
 print("<==== 3. GROUPING SENSOR LINKS ====>")
 print(result_grouping)
 
-abstracted_robot.add_sensor_groups(result_grouping)
+abstracted_robot.add_component_groups(result_grouping, "sensor")
 
-# ========= CLASSIFICATION =======
-sensor_classif = SensorLinkClassificationTask(sensor_subclasses, nb_runs=1)
-result_classif = llm_module.run_task(sensor_classif, abstracted_robot.sensor_links.sensor_groups, verbose=False)
+sensor_classif = ComponentLinkClassificationTask(sensor_ontology["Sensor"], nb_runs=5, keyword="sensor")
+result_classif = llm_module.run_task(sensor_classif, abstracted_robot.sensor_links.component_groups, verbose=True)
 print("<==== 4. CLASSIFICATION SENSOR GROUPS ====>")
 print(result_classif)
 
-abstracted_robot.add_sensor_group_classification(result_classif)
+abstracted_robot.add_component_group_classification(result_classif, "sensor")
+
+# ================= ALL IN ONE ============
+# Get all the paths from a given node to its connected leaf nodes
+# all_chains = urdf_tree.get_all_chain_names(urdf_tree.get_link('base_link'))
+# print(all_chains)
+# sensor_identif = SensorAbstractingAllInOne(nb_runs=5)
+# result_identif = llm_module.run_task(sensor_identif, all_chains, verbose=True)
+# print("<====0. ALL IN ONE ====>")
+# print(result_identif)
+
+# robot_path = '../urdf/pr2.urdf'
+# urdf_tree = URDFTree(robot_path)
+# abstracted_robot = AbstractedRobotLinks("pr2", robot_path, urdf_tree)
+
+# print("INITIAL")
+# # ========= IDENTIFICATION =======
+# # ==== Identify sensor links based on leaf names (restrict the subset of links)
+# sensor_identif = SensorLinkIdentificationTask(nb_runs=5, keyword="sensor")
+# result_identif = llm_module.run_task(sensor_identif, robot_leaf_links_dict, verbose=False)
+# print("<==== 1. IDENTIFIED SENSOR LINKS ====>")
+# print(result_identif)
+
+# abstracted_robot.add_identified_sensor_links(result_identif)
+
+# # ========= MOUNTING POINT =======
+# sensor_mounting = SensorLinkMountingPointTask(nb_runs=5, keyword="sensor")
+# result_mounting = llm_module.run_task(sensor_mounting, abstracted_robot.sensor_links.initial_chains, verbose=False)
+# print("<==== 2. IDENTIFIED SENSOR MOUNTING POINTS ====>")
+# print(result_mounting)
+
+# abstracted_robot.add_trimmed_sensor_chains(result_mounting)
+
+# # ========= GROUPING =======
+# sensor_grouping = SensorLinkGroupingTask(nb_runs=5, keyword="sensor")
+# result_grouping = llm_module.run_task(sensor_grouping, abstracted_robot.sensor_links.trimmed_chains, verbose=False)
+# print("<==== 3. GROUPING SENSOR LINKS ====>")
+# print(result_grouping)
+
+# abstracted_robot.add_sensor_groups(result_grouping)
+
+# # ========= CLASSIFICATION =======
+# sensor_classif = SensorLinkClassificationTask(sensor_subclasses, nb_runs=5, keyword="sensor")
+# result_classif = llm_module.run_task(sensor_classif, abstracted_robot.sensor_links.sensor_groups, verbose=False)
+# print("<==== 4. CLASSIFICATION SENSOR GROUPS ====>")
+# print(result_classif)
+
+# abstracted_robot.add_sensor_group_classification(result_classif)
 
 # Gather the URDF chains for each sensor group, with children_links 
 
