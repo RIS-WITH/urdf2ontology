@@ -1,7 +1,7 @@
 from tasks.VotingTask import VotingTask
 
 from itertools import combinations
-from collections import defaultdict, Counter
+from collections import defaultdict
 from typing import List, Tuple
 import json
 
@@ -9,12 +9,14 @@ class LinkGroupingTask(VotingTask):
     def __init__(self, nb_runs, keyword):
         super().__init__(nb_runs, keyword)
         
-        self.json_format = """
-        {
-            "grouped_""" + f"{self.keyword}s" + """ : [
-                {"grouped_leaf_links": [string, ...], "common_parent": string},
+        self.json_format = f"""
+        {{
+            "grouped_{self.keyword}s": [
+                {{
+                    "grouped_leaf_links": ["string", "..."]
+                }}
             ]
-        }
+        }}
         """
         
         self.structured_format = {
@@ -28,10 +30,9 @@ class LinkGroupingTask(VotingTask):
                     "grouped_leaf_links": {
                         "type": "array",
                         "items": {"type": "string"}
-                        },
-                        "common_parent": {"type": "string"}
+                        }
                     },
-                    "required": ["grouped_leaf_links", "common_parent"],
+                    "required": ["grouped_leaf_links"],
                     "additionalProperties": False
                 }
                 }
@@ -47,102 +48,33 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
         self.initial_chains = {}
         
     def system_prompt(self) -> str:
-        
-        old_prompt = """
-        Task:
-        You are given sensor links along with their trimmed sensor subchains. Group them into sensor components, where each component corresponds to one physical, hot-swappable sensor device. A sensor component may contain multiple links (so subchains) if they represent different internal frames or functional parts of the same physical sensor.
 
-        Grouping Rules:
-        Group links into the same component if their subchains:
-        -Share intrinsic sensor links, or
-        -Represent different internal frames or functional parts of the same device, or
-        -Attach via the same mounting point and clearly describe one sensor.
-        Do not group links from different physical devices.
+        compacted_prompt = f""" 
+Task: Group {self.keyword} leaf links into distinct physical device groups.
 
-        Input:
-        A list of sensor links + trimmed sensor subchains (each an ordered list of intrinsic sensor link names).
+Grouping Logic:
+1. One Group = One physical device (e.g., a single {self.keyword} assembly unit, consisting of one or several leaf links).
+2. Evidence: Use the provided kinematic subchains to identify intrinsic structural cohesion between links.
+3. Strategy: Be conservative. If kinship is ambiguous, maintain separate groups.
 
-        Output:
-        Return a list of sensor components based on the links. For each component, produce:
-        - grouped_leaf_links: Leaf link names belonging to the component.
-        - common_parent: Link that matches all internal frames of a sensor subgroup, discarding upper structural links.
+Constraint: Every input leaf link must be assigned to exactly one group.
 
-        Constraints:
-        Every input link must appear in exactly one component.
-        Do not introduce new links.
-        Prefer conservative grouping when uncertain.
-        
-        Respond only with the following JSON format:""" + self.json_format
-        
-        new_prompt = f"""
-        Task:
-        You are given {self.keyword} leaf links along with their trimmed intrinsic subchains. Each subchain represents only the links belonging to the {self.keyword} assembly, starting from its mounting point and ending at the leaf link.
-
-        Your task:
-        Group leaf links into physical {self.keyword} components.
-
-        Definition of a component:
-        A component corresponds to exactly one physical device.
-        A device may contain multiple internal frames represented as multiple leaf links.
-
-        Grouping rules:
-        Group links together if:
-        - Their intrinsic subchains share a common prefix beyond the mounting point, OR
-        - They represent internal frames of the same physical device, OR
-        - They attach via the same mounting point AND clearly represent one device.
-
-        Do NOT group links if:
-        - They belong to distinct physical devices
-        - Their subchains diverge immediately after the mounting point
-
-        Constraints:
-        - Each leaf link must appear in exactly one group.
-        - Do not invent new links.
-        - Prefer conservative grouping if uncertain.
-        - Each group must contain at least one leaf link.
-
-        For each group, return:
-        - grouped_leaf_links
-        - common_parent: the deepest shared link in the intrinsic subchains of the group
-
-        Respond only in JSON format:
-        {self.json_format}
-        """
-        
-        return new_prompt
+Format:
+Respond strictly in JSON:
+{self.json_format}
+"""
+        return compacted_prompt
        
     def user_prompt(self, user_input) -> str:
         
         self.initial_chains = user_input
         chains = json.dumps(user_input, indent=2)
         
-        old_message = f"Here is the list of {self.keyword} component chains that could be merged together: " + chains
-        
         new_message = f"""
-        You are given identified {self.keyword} leaf links along with their intrinsic subchains.
-        Each entry contains:
-        - A leaf link name
-        - Its trimmed intrinsic subchain (ordered list of links belonging only to the {self.keyword} assembly)
-
-        Important:
-        These subchains already exclude upper structural robot links.
-        They represent only links internal to the component assembly.
-
-        Your task:
-        Group leaf links that belong to the same physical {self.keyword} device.
-
-        Constraints:
-        - Every leaf link must appear in exactly one group.
-        - Do not invent new links.
-        - Do not omit any link.
-        - Prefer conservative grouping when uncertain.
-        - Groups correspond to physical devices.
-
-        For each group:
-        - grouped_leaf_links: list of leaf links in that device
-        - common_parent: the deepest shared link inside the intrinsic subchains
-
-        Input data:{chains}
+        Below are the identified {self.keyword} leaf links and their intrinsic subchains.
+        
+        Input data:
+        {chains}
         """
         
         return new_message
@@ -156,27 +88,20 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
             return valid_results
         
         for grouped_sensor_item in grouped_sensors_chains:
-            # Defensive parsing
             if not isinstance(grouped_sensor_item, dict):
                 continue
 
             leaf_links = grouped_sensor_item.get("grouped_leaf_links", [])
-            common_parent_link = grouped_sensor_item.get("common_parent", "")
             
-            if(leaf_links == [] or common_parent_link == ""):
+            if(leaf_links == []):
+                print(f"discarded grouped {self.keyword} because of empty links")
+                continue
+            
+            if not all(link in self.initial_chains.keys() for link in leaf_links):
                 print(f"discarded grouped {self.keyword} because of non-existing link as one of the leaves: {leaf_links}")
                 continue
-            
-            # Validate that all leaf links exist
-            if not all(link in self.initial_chains for link in leaf_links):
-                print(f"discarded grouped {self.keyword} because of non-existing link as one of the leaves: {leaf_links}")
-                continue
-            
-            if(not all(common_parent_link in self.initial_chains[link] for link in leaf_links)):
-                print(f"discarded grouped {self.keyword} because of non-existing common parent: {leaf_links}")
-                continue
-            
-            valid_results.append((leaf_links, common_parent_link))
+        
+            valid_results.append((leaf_links))
         
         print("Interpreted", len(valid_results), f"{self.keyword} groups.")
          
@@ -191,7 +116,7 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
         for generation in generations:
             seen_pairs = set()
 
-            for grouped_links, _ in generation:
+            for grouped_links in generation:
                 all_links.update(grouped_links)
                 for a, b in combinations(sorted(grouped_links), 2):
                     seen_pairs.add((a, b))
@@ -226,24 +151,5 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
 
                 final_groups.append(component)
 
-        # --- Step 4: majority vote for parent ---
-        result = []
-
-        for group in final_groups:
-            parent_counter = Counter()
-
-            for generation in generations:
-                for grouped_links, parent in generation:
-                    # if set(grouped_links) == group:
-                    if set(grouped_links).issubset(group):
-                        parent_counter[parent] += 1
-
-            if parent_counter:
-                majority_parent = parent_counter.most_common(1)[0][0]
-            else:
-                majority_parent = None  # no exact match found
-
-            result.append((list(group), majority_parent))
-
-        print("Validated", len(result), f"{self.keyword} groups")
-        return result
+        print("Validated", len(final_groups), f"{self.keyword} groups")
+        return final_groups
