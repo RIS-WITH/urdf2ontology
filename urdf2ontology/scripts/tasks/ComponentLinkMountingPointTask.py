@@ -4,14 +4,19 @@ from typing import Dict, Tuple, List, Any
 import json
 from collections import defaultdict, Counter
 
+
+# change to Attachment Root Detection
 class LinkMountingPointTask(VotingTask):
     def __init__(self, nb_runs, keyword):
         super().__init__(nb_runs, keyword)
         
         self.json_format = """
         {
-            "chains" : [
-                {"link_name": string,  "mounting_point": string},
+            "chains": [
+                {
+                "target_link": "<target_link>",
+                "attachment_root": "<attachment_root>"
+                }
             ]
         }
         """
@@ -25,9 +30,9 @@ class LinkMountingPointTask(VotingTask):
                     "type": "object",
                     "properties": {
                     "link_name": {"type": "string"},
-                    "mounting_point": {"type": "string"}
+                    "attachment_root": {"type": "string"}
                     },
-                    "required": ["link_name", "mounting_point"],
+                    "required": ["link_name", "attachment_root"],
                     "additionalProperties": False
                 }
                 }
@@ -38,79 +43,37 @@ class LinkMountingPointTask(VotingTask):
 
 class ComponentLinkMountingPointTask(LinkMountingPointTask):
 
-    def __init__(self, nb_runs: int, keyword: str, definition: str):
+    def __init__(self, nb_runs: int, keyword: str):
         super().__init__(nb_runs, keyword)
-        self.definition = definition
 
         self.initial_chains = dict()
                             
     def system_prompt(self) -> str:
-    
-        old_prompt = f"""
-        You are given ordered link sequences, each corresponding to an identified {self.keyword} leaf link. Each sequence represents the path from the robot base to a single link.
-        For each sequence, identify the mounting link, defined as the link such that:
-        - links before it belong to the robot structure, and
-        - it and all links after it belong to an attached {self.keyword} (assembly or sub-{self.keyword} component).
+        compacted_prompt = f""" 
+        You are an expert in ontology abstraction from URDF files.
+        You task is to identify the attachment root of {self.keyword} component in their kinematic chain.
+        The attachment root is defined as the structural boundary which allows to split the {self.keyword} component from the robot's body.
+        For each of the provided target link and their kinematic chain from leaf to root, output the attachment root link. 
         
-        Input:
-        List of link + chain (ordered list from parent to child) identified as embedding a {self.keyword}-related link as its leaf.
-        
-        Output:
-        For each (link + chain) pair, report the mounting point.
-        
-        Respond only in JSON format as below:
-        """ + self.json_format 
-        
-        new_prompt = f"""
-        You are given ordered link sequences.
-        Each sequence corresponds to one identified {self.keyword} leaf link.
-        Each sequence represents the path from the robot base to that leaf link.
-
-        Your task:
-        For each sequence, identify the mounting link.
-
-        Definition of mounting link:
-        It is the FIRST link in the chain that belongs to the {self.keyword} assembly.
-
-        More precisely:
-        - All links BEFORE the mounting link belong to the robot's structural body.
-        - The mounting link and ALL links AFTER it belong to the attached {self.keyword} component.
-        - There must be exactly ONE mounting link per chain.
-
-        Selection rules:
-        - Choose the earliest link in the chain that clearly belongs to the component.
-        - Do NOT choose intermediate structural links.
-        - Do NOT choose the base link unless the component is directly attached to it.
-        - If uncertain, choose the earliest plausible boundary.
-
-        Respond only in JSON format:
-        {self.json_format}
+        Answer only in the following format: {self.json_format}
+        For each input chain, produce one entry in "chains".
+        Respond ONLY with valid JSON following this structure.
+        Do not include explanations.
         """
         
-        return new_prompt
+        return compacted_prompt
         
     def user_prompt(self, user_input) -> str:
-        # dump (link + chains) for prompt
-        links = json.dumps(user_input, indent=2)
-        # store (link + chains) for interpet verification
+
+        chains = json.dumps(user_input, indent=2)
+
         self.initial_chains = user_input
         
-        old_message = f"Here is the list of {self.keyword}s links that have been identified, along with their hierarchical chain up to the root:" + links
-        
         new_message = f"""
-        Below are the identified {self.keyword} leaf links,
-        along with their full kinematic chain from the robot base to the leaf.
-
-        Each entry is:
-        - link_name: the identified component leaf link
-        - chain: ordered list from base -> ... -> leaf
-
-        Your task:
-        For each chain, determine the mounting link.
-
-        Chains: {links}
-        """
+        Below are the identified {self.keyword} target links and their full kinematic chains from the robot base to each leaf links.
         
+        Input data: {chains}
+        """
         return new_message
     
     def interpret(self, output: Dict[str, Any]) -> List[Tuple[str, str]]:
@@ -125,8 +88,8 @@ class ComponentLinkMountingPointTask(LinkMountingPointTask):
             if not isinstance(chain_item, dict):
                 continue
 
-            link_name = chain_item.get("link_name")
-            mount_point = chain_item.get('mounting_point')
+            link_name = chain_item.get("target_link")
+            mount_point = chain_item.get('attachment_root')
             
             if not isinstance(link_name, str) or not isinstance(mount_point, str):
                 continue
@@ -136,7 +99,7 @@ class ComponentLinkMountingPointTask(LinkMountingPointTask):
                 continue
             
             if(mount_point not in self.initial_chains[link_name]): 
-                print("The generated mount link is non-existing: ", mount_point)
+                print("The generated attachment root is non-existing: ", mount_point)
                 continue
     
             valid_results.append((link_name, mount_point))
@@ -154,9 +117,6 @@ class ComponentLinkMountingPointTask(LinkMountingPointTask):
                 per_link_votes[link].append(mount)
 
         for link, mount in per_link_votes.items():
-            # to be classified, the number of votes must be higher than half the number of models
-            # if(len(mount) > int(self.nb_runs/2) ):
-            #     final[link] = Counter(mount).most_common(1)[0][0]
             most_common, count = Counter(mount).most_common(1)[0]
             if count >= int(self.nb_runs/2) + 1:
                 final[link] = most_common
