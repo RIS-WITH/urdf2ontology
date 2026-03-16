@@ -1,6 +1,6 @@
 # urdf2ontology
 
-# "Extracting Semantics: LLM-Guided AutomaticPopulation of Robot Ontology from URDF" [under review]
+# "Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF" [under review]
 
 This repository contains the implementation of a partially-closed loop pipeline designed to automate the abstraction of robotic hardware. By leveraging the reasoning capabilities of Large Language Models (LLMs) grounded by a domain-expert ontology, the system transforms URDF data into a structured, machine-readable knowledge base (populated ontology).
 
