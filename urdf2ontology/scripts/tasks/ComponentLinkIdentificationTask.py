@@ -7,13 +7,13 @@ class LinkIdentificationTask(VotingTask):
     def __init__(self, nb_runs, keyword):
         super().__init__(nb_runs, keyword)
         
-        self.json_format = """
-        {
-            """ + f"{self.keyword}" + """: 
+        self.json_format = f"""
+        {{
+            "{self.keyword}":
             [
-                {"link_name": "string"},
+                {{"link_name": "string"}}
             ]
-        }
+        }}
         """
         
         self.structured_format = {
@@ -42,53 +42,35 @@ class ComponentLinkIdentificationTask(LinkIdentificationTask):
         self.definition = definition
                 
     def system_prompt(self) -> str:
-        
-        # more conservative prompt (does not classify laser_tilt_link, projector_wg6802418_child_frame or l/r_gripper_led_frame )
         simple_prompt = f"""
-        You are given URDF leaf links. Your task is to identify all links corresponding to {self.keyword}s.
-        
-        Definition of {self.keyword}:
-        {self.definition}
-        
-        Include:
-        - Direct physical representations.
-        - Frames specific to the component.
-        - Mounting or tool frames if clearly part of the assembly.
+Task: Identify all URDF leaf links that represent or belong to a {self.keyword} instance.
 
-        Input:
-        A list of URDF leaf links.
+Definition of {self.keyword}:
+{self.definition}
 
-        Output:
-        Return only the URDF links identified as {self.keyword}s.
-        
-        Output Format:
-        Respond only with JSON in this format:
-        {self.json_format}
-        """
-        
+Selection Criteria:
+1. Functional Origins: Links representing the point of {self.keyword} interaction.
+2. Internal Assemblies: Frames belonging to the internal structure of the {self.keyword}.
+3. Exclusions: Do NOT select links that are purely structural or part of the robot's transmission/body.
+
+Input: List of URDF leaf links.
+Output Format: Respond strictly in JSON: {self.json_format}
+"""
+
         return simple_prompt
         
     def user_prompt(self, user_input) -> str:
         # store the initial links for verification purposes
         self.init_links = user_input["links"]
-
+        
         # dump in string for prompt
         links = json.dumps(self.init_links, indent=2)
         
-        message =  f"""
-        You are given all URDF leaf links of a robot model.
-        A leaf link is a link that has no children in the kinematic chain.
-
-        Your task:
-        Identify which of these links correspond to {self.keyword}s.
-
-        Only select links that clearly satisfy the definition.
-        Do not guess.
-        Do not include unrelated structural parts.
-        If unsure, exclude the link.
-
-        Leaf links:{links}
-        """
+        message = f"""
+        Below are the URDF leaf links of the robot.
+        
+        Input data: 
+        {links}"""
 
         return message
     
@@ -118,7 +100,6 @@ class ComponentLinkIdentificationTask(LinkIdentificationTask):
                 
         final = []
         for link, nb_occ in per_link_votes.items():
-            # to be classified, the number of votes must be higher than half the number of models
             if(int(nb_occ) >= int(self.nb_runs/2) + 1):
                 final.append(link)
                 
