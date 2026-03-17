@@ -1,0 +1,1325 @@
+<?xml version="1.0"?> 
+<rdf:RDF xmlns="urn:absolute:ontologenius#" 
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:swrl="http://www.w3.org/2003/11/swrl#"
+     xmlns:swrlb="http://www.w3.org/2003/11/swrlb#"
+     xmlns:onto="urn:absolute:ontologenius#">
+    <owl:Ontology rdf:about="urn:absolute:ontologenius"/>
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotations Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+    <!-- urn:absolute:ontologenius#hasPart -->
+
+    <owl:ObjectProperty rdf:about="urn:absolute:ontologenius#hasPart">
+        <rdfs:subPropertyOf rdf:resource="urn:absolute:ontologenius#topObjectProperty"/>
+    </owl:ObjectProperty>
+
+
+
+    <!-- urn:absolute:ontologenius#topObjectProperty -->
+
+    <owl:ObjectProperty rdf:about="urn:absolute:ontologenius#topObjectProperty">
+    </owl:ObjectProperty>
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Data properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+    <!-- urn:absolute:ontologenius#AHRS -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#AHRS">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InertialUnit"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#AccelerometerOrigin -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#AccelerometerOrigin">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InertialSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#AcousticSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#AcousticSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Sensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#AcousticSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#AcousticSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#SensorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ActuationSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ActuationSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffectorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#AnthropomorphicHand -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#AnthropomorphicHand">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Gripper"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Bumper -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Bumper">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#CapacitiveSurface -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#CapacitiveSurface">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#TactileSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ContactSurface -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ContactSurface">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InteractionSubpart"/>
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#TactileSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#CuttingEdge -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#CuttingEdge">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ProcessingSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#DepthFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#DepthFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#OpticalSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#EndEffector -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#EndEffector">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#EndEffectorSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#EndEffectorSubpart">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Extruder -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Extruder">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ManufacturingTool"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#FingerLink -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#FingerLink">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ActuationSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#FingerTip -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#FingerTip">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ActuationSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#FlangeInterface -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#FlangeInterface">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#StructuralSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ForceTorqueSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ForceTorqueSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Sensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#GrayscaleFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#GrayscaleFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#OpticalSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Gripper -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Gripper">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffector"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#GyroscopeOrigin -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#GyroscopeOrigin">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InertialSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#IMU -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#IMU">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InertialUnit"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ImpactSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ImpactSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ImuFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ImuFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InertialSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#InertialSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#InertialSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#SensorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#InertialUnit -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#InertialUnit">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Sensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#InfraredFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#InfraredFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#OpticalSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#InteractionSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#InteractionSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffectorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#JointAxis -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#JointAxis">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ActuationSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#LaserOrigin -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#LaserOrigin">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#LensCenter -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#LensCenter">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#PhysicalInterface"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Lidar -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Lidar">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#MagneticFace -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#MagneticFace">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InteractionSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#MagneticPicker -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#MagneticPicker">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffector"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ManufacturingTool -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ManufacturingTool">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffector"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Microphone -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Microphone">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#AcousticSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#MicrophoneFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#MicrophoneFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#AcousticSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#MonocularCamera -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#MonocularCamera">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#VisionSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#MountingPlate -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#MountingPlate">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#PhysicalInterface"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#NozzleExit -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#NozzleExit">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ProcessingSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#OpticalSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#OpticalSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#SensorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#PalmLink -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#PalmLink">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ActuationSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ParallelGripper -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ParallelGripper">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Gripper"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#PhysicalInterface -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#PhysicalInterface">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#SensorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ProcessingSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ProcessingSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffectorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#RGBD_Camera -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#RGBD_Camera">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#VisionSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Radar -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Radar">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#RangingSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#RangingSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Sensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#RangingSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#RangingSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#SensorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#RgbFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#RgbFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#OpticalSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#RoboticDrill -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#RoboticDrill">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ManufacturingTool"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Sensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Sensor">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SensorHousing -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SensorHousing">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#PhysicalInterface"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SensorSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SensorSubpart">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SingleSuctionCup -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SingleSuctionCup">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#VacuumTool"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SolidStateLidar -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SolidStateLidar">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Lidar"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#Sonar -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#Sonar">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SonarFrame -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SonarFrame">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#AcousticSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SpinningLidar -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SpinningLidar">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Lidar"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#StereoCamera -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#StereoCamera">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#VisionSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#StructuralSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#StructuralSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffectorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SuctionArray -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SuctionArray">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#VacuumTool"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#SuctionInterface -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#SuctionInterface">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InteractionSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#TactileArray -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#TactileArray">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ForceTorqueSensor"/>
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#TactileSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#TactileSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Sensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#TactileSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#TactileSubpart">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#SensorSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ThermalCamera -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ThermalCamera">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#VisionSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ThreeFingerGripper -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ThreeFingerGripper">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Gripper"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#TimeOfFlightOrigin -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#TimeOfFlightOrigin">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ToolCenterPoint -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ToolCenterPoint">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#InteractionSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#ToolHousing -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#ToolHousing">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#StructuralSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#UltrasonicSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#UltrasonicSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#AcousticSensor"/>
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#UltrasoundOrigin -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#UltrasoundOrigin">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#RangingSubpart"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#UnderactuatedGripper -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#UnderactuatedGripper">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Gripper"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#UnknownEndEdffectorSubpart -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#UnknownEndEdffectorSubpart">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#UnknownEndEffector -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#UnknownEndEffector">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#UnknownSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#UnknownSensor">
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#VacuumTool -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#VacuumTool">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#EndEffector"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#VisionSensor -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#VisionSensor">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#Sensor"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#WeldingTorch -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#WeldingTorch">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ManufacturingTool"/>
+    </owl:Class>
+
+
+
+    <!-- urn:absolute:ontologenius#WristForceTorque -->
+
+    <owl:Class rdf:about="urn:absolute:ontologenius#WristForceTorque">
+        <rdfs:subClassOf rdf:resource="urn:absolute:ontologenius#ForceTorqueSensor"/>
+    </owl:Class>
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+    <!-- urn:absolute:ontologenius#BumperB_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#BumperB_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#BumperFL_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#BumperFL_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#BumperFR_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#BumperFR_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#CameraBottom_optical_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#CameraBottom_optical_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#RgbFrame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#CameraDepth_optical_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#CameraDepth_optical_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#DepthFrame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#CameraTop_optical_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#CameraTop_optical_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#RgbFrame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#ChestButton_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#ChestButton_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#HeadTouchFront_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#HeadTouchFront_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#CapacitiveSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#HeadTouchMiddle_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#HeadTouchMiddle_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#CapacitiveSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#HeadTouchRear_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#HeadTouchRear_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#CapacitiveSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#ImuBaseAccelerometer_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#ImuBaseAccelerometer_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#AccelerometerOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#ImuTorsoAccelerometer_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#ImuTorsoAccelerometer_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#AccelerometerOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#ImuTorsoGyrometer_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#ImuTorsoGyrometer_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#GyroscopeOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#LFinger13_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#LFinger13_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#LFinger23_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#LFinger23_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#LFinger33_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#LFinger33_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#LFinger43_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#LFinger43_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#LHandTouchBack_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#LHandTouchBack_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#CapacitiveSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#LThumb2_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#LThumb2_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#RFinger13_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#RFinger13_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#RFinger23_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#RFinger23_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#RFinger33_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#RFinger33_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#RFinger43_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#RFinger43_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#RHandTouchBack_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#RHandTouchBack_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#CapacitiveSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#RThumb2_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#RThumb2_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#ShovelLaser_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#ShovelLaser_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SonarBack_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SonarBack_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#SonarFrame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SonarFront_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SonarFront_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#SonarFrame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SurroundingFrontLaser_device_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SurroundingFrontLaser_device_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SurroundingFrontLaser_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SurroundingFrontLaser_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SurroundingLeftLaser_device_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SurroundingLeftLaser_device_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SurroundingLeftLaser_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SurroundingLeftLaser_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SurroundingRightLaser_device_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SurroundingRightLaser_device_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#SurroundingRightLaser_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#SurroundingRightLaser_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#VerticalLeftLaser_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#VerticalLeftLaser_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#VerticalRightLaser_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#VerticalRightLaser_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#LaserOrigin"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#end_effector_0 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#end_effector_0">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#AnthropomorphicHand"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#r_gripper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#RFinger43_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#RFinger23_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#RThumb2_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#RFinger33_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#RFinger13_link"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#end_effector_1 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#end_effector_1">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#AnthropomorphicHand"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LFinger23_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#l_gripper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LThumb2_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LFinger13_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LFinger43_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LFinger33_link"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#l_gripper -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#l_gripper">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ToolCenterPoint"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#myself -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#myself">
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#r_gripper -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#r_gripper">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ToolCenterPoint"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_0 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_0">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#RHandTouchBack_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_1 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_1">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#VerticalLeftLaser_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_10 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_10">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#VerticalRightLaser_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_11 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_11">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#SurroundingRightLaser_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_12 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_12">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#SurroundingFrontLaser_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_13 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_13">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#HeadTouchFront_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_14 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_14">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#InertialUnit"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#ImuTorsoGyrometer_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_15 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_15">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Bumper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#BumperB_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_16 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_16">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Sonar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#SonarBack_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_17 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_17">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Bumper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#ChestButton_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_18 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_18">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#InertialUnit"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#ImuTorsoAccelerometer_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_19 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_19">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#InertialUnit"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#ImuBaseAccelerometer_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_2 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_2">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Bumper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#BumperB_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_20 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_20">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Sonar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#SonarFront_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_21 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_21">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#VisionSensor"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#CameraDepth_optical_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_22 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_22">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#ShovelLaser_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_23 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_23">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#MonocularCamera"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#CameraBottom_optical_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_24 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_24">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#HeadTouchRear_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_25 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_25">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#MonocularCamera"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#CameraTop_optical_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_3 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_3">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#HeadTouchMiddle_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_4 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_4">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Bumper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#BumperFR_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_5 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_5">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LHandTouchBack_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_6 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_6">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#TactileSensor"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#LHandTouchBack_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_7 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_7">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#SurroundingLeftLaser_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_8 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_8">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Bumper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#BumperFL_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#sensor_9 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#sensor_9">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#Lidar"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#SurroundingFrontLaser_device_frame"/>
+    </owl:NamedIndividual>
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // General axioms
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+    <!--
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Rules
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+
+
+</rdf:RDF> 
+
