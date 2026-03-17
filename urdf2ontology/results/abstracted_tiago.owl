@@ -797,6 +797,50 @@
 
 
 
+    <!-- urn:absolute:ontologenius#end_effector_1 -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#end_effector_0">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ParallelGripper"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#gripper_grasping_frame"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#gripper_left_finger_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#gripper_right_finger_link"/>
+        <onto:hasPart rdf:resource="urn:absolute:ontologenius#gripper_tool_link"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#gripper_grasping_frame -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#gripper_grasping_frame">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#StructuralSubpart"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#gripper_left_finger_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#gripper_left_finger_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#gripper_right_finger_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#gripper_right_finger_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ContactSurface"/>
+    </owl:NamedIndividual>
+
+
+
+    <!-- urn:absolute:ontologenius#gripper_tool_link -->
+
+    <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#gripper_tool_link">
+        <rdf:type rdf:resource="urn:absolute:ontologenius#ToolHousing"/>
+    </owl:NamedIndividual>
+
+
+
     <!-- urn:absolute:ontologenius#head_front_camera_color_optical_frame -->
 
     <owl:NamedIndividual rdf:about="urn:absolute:ontologenius#head_front_camera_color_optical_frame">
