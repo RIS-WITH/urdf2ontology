@@ -21,10 +21,34 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasBodyPart -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasBodyPart">
+        <rdfs:subPropertyOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasPart"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasEndEffector -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasEndEffector">
+        <rdfs:subPropertyOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasPart"/>
+    </owl:ObjectProperty>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasPart -->
 
     <owl:ObjectProperty rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasPart">
         <rdfs:subPropertyOf rdf:resource="http://www.w3.org/2002/07/owl#topObjectProperty"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasSensor -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasSensor">
+        <rdfs:subPropertyOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#hasPart"/>
     </owl:ObjectProperty>
     
 
@@ -80,11 +104,47 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Ankle -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Ankle">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#AnthropomorphicHand -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#AnthropomorphicHand">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Gripper"/>
     </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Arm -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Arm">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Base -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Base">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
     
 
 
@@ -100,6 +160,14 @@
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#CapacitiveSurface">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#TactileSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Caster -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Caster">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
     </owl:Class>
     
 
@@ -129,6 +197,22 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Ear -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Ear">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Elbow -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Elbow">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#EndEffector -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#EndEffector"/>
@@ -149,6 +233,22 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Eye -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Eye">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#FingerLink -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#FingerLink">
@@ -165,6 +265,14 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#FixedBase -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#FixedBase">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Base"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#FlangeInterface -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#FlangeInterface">
@@ -173,10 +281,26 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Foot -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Foot">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ForceTorqueSensor -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ForceTorqueSensor">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Sensor"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ForeArm -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ForeArm">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
     </owl:Class>
     
 
@@ -205,6 +329,30 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Hand -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Hand">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Head -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Head">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Hip -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Hip">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#IMU -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#IMU">
@@ -225,6 +373,14 @@
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ImuFrame">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#InertialSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Index -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Index">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger"/>
     </owl:Class>
     
 
@@ -269,10 +425,26 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Knee -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Knee">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#LaserOrigin -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#LaserOrigin">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#RangingSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Leg -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Leg">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
     </owl:Class>
     
 
@@ -333,6 +505,22 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MiddleFinger -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MiddleFinger">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MobileBase -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MobileBase">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Base"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MonocularCamera -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MonocularCamera">
@@ -345,6 +533,14 @@
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#MountingPlate">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#PhysicalInterface"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Mouth -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Mouth">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
     </owl:Class>
     
 
@@ -385,6 +581,14 @@
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#PhysicalInterface">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#SensorSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Pinky -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Pinky">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger"/>
     </owl:Class>
     
 
@@ -437,6 +641,14 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#RingFinger -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#RingFinger">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#RoboticDrill -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#RoboticDrill">
@@ -462,6 +674,14 @@
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#SensorSubpart -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#SensorSubpart"/>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Shoulder -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Shoulder">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
     
 
 
@@ -578,6 +798,14 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Thumb -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Thumb">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Finger"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#TimeOfFlightOrigin -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#TimeOfFlightOrigin">
@@ -598,6 +826,14 @@
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ToolHousing">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#StructuralSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Torso -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Torso">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPart"/>
     </owl:Class>
     
 
@@ -645,6 +881,14 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#UpperArm -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#UpperArm">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#VacuumTool -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#VacuumTool">
@@ -661,10 +905,34 @@
     
 
 
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Waist -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Waist">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#WeldingTorch -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#WeldingTorch">
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#ManufacturingTool"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Wheel -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Wheel">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Wrist -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#Wrist">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/bdussard/ontologies/2026/2/untitled-ontology-465#BodyPartSubpart"/>
     </owl:Class>
     
 
