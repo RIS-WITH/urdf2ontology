@@ -45,7 +45,7 @@ class URDFTree:
         self.body_part_links: List[URDFLink] = []
         self._parse_urdf()
 
-    def abstract_components(self, final_groups: Dict):
+    def abstract_components(self, final_groups: Dict, keep_abstracted_links = False):
         """
         Collapses multi-link components into single semantic URDF links.
         Handles parallel attachments, chained sub-trees, and cleans up the tree dictionary.
@@ -96,14 +96,15 @@ class URDFTree:
             root_names = [r.name for r in roots_to_prune]
             mount_link.children = [c for c in mount_link.children if c.name not in root_names]
 
-            # 5. Inject the Abstraction
-            mount_link.add_child(new_component)
-            self.links[new_link_name] = new_component
+            if(keep_abstracted_links == True):
+                # 5. Inject the Abstraction
+                mount_link.add_child(new_component)
+                self.links[new_link_name] = new_component
             
-            # 6. Final Sync
-            # Remove deleted links and add the new abstracted leaf
+                # 6. Final Sync
+                # Remove deleted links and add the new abstracted leaf
+                self.leaf_links.append(new_component)
             self.refresh_leaf_links()
-            self.leaf_links.append(new_component)
 
     def _recursive_purge(self, link: URDFLink):
         """Removes a link and all its descendants from the tree's internal dictionary."""
