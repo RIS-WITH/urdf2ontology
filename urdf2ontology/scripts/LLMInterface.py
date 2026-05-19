@@ -39,17 +39,42 @@ class LLMInterface():
                 keep_alive=1,
                 think=True #True/False or "low"/"medium"/"high"
             )
-                
-            try:
-                answer_text = re.sub(r"```(?:json)?", "", response["response"]).strip()
-                json_answer = json.loads(answer_text)
-                outputs.append(json_answer)
-            except Exception:
-                print("Error: invalid JSON output")
-                
-            if(verbose):
-                print("===========> Answer", response["response"])
+
+            # try:
+            #     answer_text = re.sub(r"```(?:json)?", "", response["response"]).strip()
+            #     json_answer = json.loads(answer_text)
+            #     outputs.append(json_answer)
             
+            #  except Exception:
+            #     print("Error: invalid JSON output")
+                
+                
+            raw_response = response["response"]
+            if(verbose):
+                print("===========> Answer", raw_response)
+            json_answer = None
+
+            code_block_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_response, re.DOTALL)
+            
+            if code_block_match:
+                try:
+                    json_answer = json.loads(code_block_match.group(1).strip())
+                except json.JSONDecodeError:
+                    pass
+
+            if json_answer is None:
+                outer_braces = re.search(r"(\{.*\})", raw_response, re.DOTALL)
+                if outer_braces:
+                    try:
+                        json_answer = json.loads(outer_braces.group(1).strip())
+                    except json.JSONDecodeError:
+                        print(f"[ERROR] Found structural braces but failed parsing content for entry.")
+
+            if json_answer is not None:
+                outputs.append(json_answer)
+            else:
+                print(f"[CRITICAL] Error: Invalid JSON output structure from model raw string.")
+                
         votes = []
         for output in outputs:
             try:
