@@ -1,4 +1,4 @@
-# "Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF" [under review]
+# "Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF" [accepted]
 
 This repository contains the implementation of a partially-closed loop pipeline designed to automate the abstraction of robotic hardware. By leveraging the reasoning capabilities of Large Language Models (LLMs) grounded by a domain-expert ontology, the system transforms URDF data into a structured, machine-readable knowledge base (populated ontology).
 
@@ -42,3 +42,15 @@ Step 7. Ontology Population Task:
 5. Run ontologenius with ros2 launch ontologenius ontologeniu_empty.xml
 6. Run the main loop with python3 main.py
 ```
+
+## Citation
+If you use this work in your research, please cite the following paper as below:
+
+BibTeX:
+```bibtex
+@article{dussard2026extracting},
+  author    = {Dussard, Bastien and Sarthou, Guillaume},
+  title     = {Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF},
+  booktitle = {18th International Conference on Social Robotics (ICSR + ART 2026)},
+  year      = {2026},
+  note      = {accepted for publication}

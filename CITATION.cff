@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Dussard"
+  given-names: "Bastien"
+  orcid: "https://orcid.org/0009-0001-8800-8853"
+- family-names: "Sarthou"
+  given-names: "Guillaume"
+  orcid: "https://orcid.org/0000-0002-4438-2763"
+title: "LLM-Based Automatic Ontology Population from URDF"
+type: software
+version: 1.0.0
+url: "https://github.com/RIS-WITH/urdf2ontology"
+preferred-citation:
+  type: conference-paper
+  authors:
+  - family-names: "Dussard"
+    given-names: "Bastien"
+    orcid: "https://orcid.org/0009-0001-8800-8853"
+  - family-names: "Sarthou"
+    given-names: "Guillaume"
+    orcid: "https://orcid.org/0000-0002-4438-2763"
+  conference: "18th International Conference on Social Robotics (ICSR + ART 2026)"
+  title: "Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF"
+  year: 2026
+  note: accepted for publication
