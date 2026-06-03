@@ -1,21 +1,21 @@
 from tasks.VotingTask import VotingTask
 
-from typing import Dict, List, Tuple
+from typing import List
 import json
+from collections import Counter
 
 class LinkIdentificationTask(VotingTask):
     def __init__(self, nb_runs, keyword):
         super().__init__(nb_runs, keyword)
         
         self.json_format = f"""
-        {{
-            "{self.keyword}":
-            [
-                {{"link_name": "string"}}
-            ]
-        }}
-        """
-        
+{{
+    "{self.keyword}":
+    [
+        {{"link_name": "string"}}
+    ]
+}}
+"""
         self.structured_format = {
             "type": "object",
             "properties": {
@@ -34,75 +34,84 @@ class LinkIdentificationTask(VotingTask):
             "required": [self.keyword],
             "additionalProperties": False
         }
+        
+    def ollama_json_schema(self):
+        return self.structured_format
 
 class ComponentLinkIdentificationTask(LinkIdentificationTask):
 
-    def __init__(self, nb_runs: int, keyword: str, definition: str):
+    def __init__(self, nb_runs: int, keyword: str):
         super().__init__(nb_runs, keyword)
-        self.definition = definition
                 
     def system_prompt(self) -> str:
         simple_prompt = f"""
-Task: Identify all URDF leaf links that represent or belong to a {self.keyword} instance.
-
-Definition of {self.keyword}:
-{self.definition}
+You are an expert in robot kinematics and URDF-to-Ontology abstraction.
+Task: You will be provided with a list of links coming from an URDF model. Each link is this list is an URDF leaf link. 
+Identify all URDF leaf links that represent or belong to a {self.keyword} instance.
 
 Selection Criteria:
 1. Functional Origins: Links representing the point of {self.keyword} interaction.
 2. Internal Assemblies: Frames belonging to the internal structure of the {self.keyword}.
-3. Exclusions: Do NOT select links that are purely structural or part of the robot's transmission/body.
 
-Input: List of URDF leaf links.
-Output Format: Respond strictly in JSON: {self.json_format}
+Input Format: 
+List of URDF leaf links: ["leaf_1", "leaf_2", ...]
+
+Output Format:
+Respond strictly in JSON following this structure: {self.json_format}
+Do not include any extra text or markdown formatting.
 """
 
         return simple_prompt
         
     def user_prompt(self, user_input) -> str:
-        # store the initial links for verification purposes
-        self.init_links = user_input["links"]
-        
-        # dump in string for prompt
+      
+        self.init_links = user_input["links"]  # store the initial links for verification purposes
         links = json.dumps(self.init_links, indent=2)
         
         message = f"""
-        Below are the URDF leaf links of the robot.
-        
-        Input data: 
-        {links}"""
+Below are the URDF leaf links of the robot.
+
+Input data: 
+{links}"""
 
         return message
     
-    def interpret(self, output: dict) -> List[Tuple[str, str]]:
-
+    def interpret(self, output: dict) -> List[str]:
         results = []
         sensors = output.get(self.keyword, [])
 
         if not isinstance(sensors, list):
+            print(f"[ERROR] Expected JSON array for key '{self.keyword}', got {type(sensors)}")
             return results
 
         for item in sensors:
+            if not isinstance(item, dict):
+                continue
+                
             link = item.get("link_name")
-            if(link in self.init_links):
+            
+            if link and link in self.init_links:
                 results.append(link)
+            elif link:
+                print(f"[WARNING] Model guessed non-existent link: '{link}'")
 
-        print("Interpreted", len(results), self.keyword + "s")
+        print(f"Interpreted {len(results)} {self.keyword}s.")
         return results
     
-    def aggregate(self, votes: List[List[str]]) -> Dict[str, List]:
+    def aggregate(self, votes: List[List[str]]) -> List[str]:
+        vote_counter = Counter()
 
-        per_link_votes = dict.fromkeys(self.init_links, 0)
-
-        for model_votes in votes:
-            for link in model_votes:
-                per_link_votes[link] += 1
+        for model_run_votes in votes:
+            for link in model_run_votes:
+                vote_counter[link] += 1
+        
+        majority_threshold = (len(votes) // 2) + 1
+        
+        final_validated_links = []
+        for link, nb_occ in vote_counter.items():
+            if nb_occ >= majority_threshold:
+                final_validated_links.append(link)
                 
-        final = []
-        for link, nb_occ in per_link_votes.items():
-            if(int(nb_occ) >= int(self.nb_runs/2) + 1):
-                final.append(link)
-                
-        print("Validated ", len(final), self.keyword + "s")
-        return final
+        print(f"Validated {len(final_validated_links)} {self.keyword}s via consensus (Threshold: >= {majority_threshold}/{len(votes)} votes).")
+        return final_validated_links
 
