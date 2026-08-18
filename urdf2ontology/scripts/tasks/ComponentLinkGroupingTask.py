@@ -13,8 +13,10 @@ class LinkGroupingTask(VotingTask, URDFLinkTask):
         self.json_format = """
 {
     "groups": {
-        "group_0": ["example_link_a", "example_link_b"],
-        "group_1": ["example_link_c"]
+        "group_0": {
+            "links": ["leaf_link_a", "leaf_link_b"],
+            "justification": string
+            }
     }
 }"""
         
@@ -23,7 +25,7 @@ class LinkGroupingTask(VotingTask, URDFLinkTask):
             "properties": {
                 "groups": {
                     "type": "object",
-                    "description": f"A dictionary mapping arbitrary tracking group IDs to arrays of physical target {self.keyword} link strings.",
+                    "description": f"A dictionary mapping arbitrary tracking group IDs to arrays of physical target {self.keyword} leaf link strings.",
                     "additionalProperties": {
                         "type": "array",
                         "items": {"type": "string"}
@@ -43,27 +45,28 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
         self.keyword_definition = ""
         self.initial_chains = {}
         self.mode = mode
-  
+
     def system_prompt(self) -> str:
         task_domain = "distinct functional groups" if self.keyword in ["body_part", "locomotion"] else "distinct physical device assemblies"
         
         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
 
-Task: Cluster the provided target {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
+Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
+As each of the clustered groups will be used to create a typed individual representing a single {self.keyword} unit, you should not merge target leaf links that do not contribute to the same {self.keyword} component.
 
 Grouping Logic:
-1. One Group = One independent component assembly unit, consisting of one or several target elements.
-2. Topological Cohesion: Inspect the parent-child track loops to identify structural connections (e.g., parallel frames branching from a common mounting hub).
-3. Functional Aggregation: If multiple distinct frames operate in unison to complete a singular functional role, merge them into the same group.
-4. Conservatism Constraint: If structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
-5. Absolute Requirement: Every single target element provided in the input payload must be assigned to exactly one group inside your response.
+1. One Group = One independent component assembly unit, consisting of one or several target elements corresponding to sub-frames of a single {self.keyword} component type.
+2. Conservatism Constraint: If structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
+3. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
 
 Input Data Format:
 {self.get_input_prompt(self.mode)}
 
 Output Format:
 Respond strictly in JSON following this structure: {self.json_format}
-Do not include any extra text or markdown formatting."""
+For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
+Do not include any extra text or markdown formatting.
+"""
 
     def user_prompt(self, user_input: dict) -> str:
         self.initial_chains = {}
@@ -85,7 +88,7 @@ Below are the identified target {self.keyword} elements requiring grouping evalu
 Input data: {chains}""" 
 
         return new_message
-    
+        
     def interpret(self, output: dict) -> List[List[str]]:
         valid_results: List[List[str]] = []
         
@@ -97,11 +100,16 @@ Input data: {chains}"""
             print(f"[PARSE ERROR] 'groups' field missing or is not a JSON object dictionary.")
             return valid_results
 
-        for group_id, grouped_links in groups_dict.items():
-            if not isinstance(grouped_links, list) or len(grouped_links) == 0:
+        for group_id, group_data in groups_dict.items():
+            if not isinstance(group_data, dict):
                 continue
 
-            # Ground-truth confirmation check
+            grouped_links = group_data.get("links", [])
+            justification = group_data.get("justification", "")
+
+            if not isinstance(grouped_links, list) or len(grouped_links) == 0:
+                continue
+            
             if all(link in self.initial_chains for link in grouped_links):
                 valid_results.append(list(grouped_links))
             else:
@@ -111,53 +119,6 @@ Input data: {chains}"""
         print(f"Interpreted {len(valid_results)} validated constituent group allocations.")
         return valid_results
     
-    # def aggregate(self, generations: List[List[Tuple[List[str], str]]]):
-    #     pair_counts = defaultdict(int)
-    #     all_links = set()
-    #     num_generations = len(generations)
-
-    #     # --- Step 1: count co-occurrences ---
-    #     for generation in generations:
-    #         seen_pairs = set()
-
-    #         for grouped_links in generation:
-    #             all_links.update(grouped_links)
-    #             for a, b in combinations(sorted(grouped_links), 2):
-    #                 seen_pairs.add((a, b))
-
-    #         for pair in seen_pairs:
-    #             pair_counts[pair] += 1
-
-    #     # --- Step 2: build majority graph ---
-    #     adjacency = defaultdict(set)
-    #     majority_threshold = int(num_generations / 2)
-
-    #     for (a, b), count in pair_counts.items():
-    #         if count > majority_threshold:
-    #             adjacency[a].add(b)
-    #             adjacency[b].add(a)
-
-    #     # --- Step 3: find connected components ---
-    #     visited = set()
-    #     final_groups = []
-
-    #     for link in all_links:
-    #         if link not in visited:
-    #             stack = [link]
-    #             component = set()
-
-    #             while stack:
-    #                 node = stack.pop()
-    #                 if node not in visited:
-    #                     visited.add(node)
-    #                     component.add(node)
-    #                     stack.extend(adjacency[node] - visited)
-
-    #             final_groups.append(component)
-
-    #     print("Validated", len(final_groups), f"{self.keyword} groups")
-    #     return final_groups
-
     def aggregate(self, generations: List[List[List[str]]]) -> List[List[str]]:
         pair_counts = defaultdict(int)
         all_links: Set[str] = set()
