@@ -60,21 +60,15 @@ class ComponentLinkNamingTask(LinkNamingTask):
         self.mode = mode
                 
     def system_prompt(self) -> str:
-        type_context = ("continuous multi-segment kinematics tracks" if self.naming_type == "chain_component" else "branched tree structures")
-        
-        return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.  
-
-Task: Provide a human-readable, unique semantic name for each abstracted {self.keyword} component and its corresponding sub-components. These names will populate a clean, semantic robotics ontology.
-
-Input Data Format:
-Each entry contains an upper-level component assembly, its mounting link anchor, and its nested functional sub-components operating on {type_context}.
+        type_context = ("continuous multi-segment kinematics chains" if self.naming_type == "chain_component" else "branched tree structures")
+       
+        return f"""
+You are an expert in robot kinematics and URDF-to-Ontology abstraction. Your task is to generate a name for all individuals that will populate an ontology representing an abstracted robot. Those names must be minimal, human-understandable semantic identifiers for abstracted {self.keyword} components and sub-components.
 
 Naming Conventions:
 1. Namespace Consistency: Use strict snake_case format exclusively. Lowercase letters, numbers, and underscores only.
-2. Compactness vs. Uniqueness: Keep names as brief as possible, but you MUST preserve vital structural qualifiers (e.g., 'left', 'right', 'rear', 'front', 'pitch', 'yaw') if they exist in the input chains.
-3. Information Stripping: Do not include generic structural words like 'link', 'frame', 'joint', 'mount', or 'bracket' in the final generated semantic name.
-4. Enforce Global Disambiguation: Sub-components must include their specific sub-functional name to ensure they never share an identical string token with their parent component.
-5. Identifier Uniqueness: Each generated component and sub-component name must be unique as they will be used to create individuals in the ontology.
+2. Keep it Minimal: Strip away standard URDF boilerplate words if the remaining words are sufficient to functionally identify the element.
+3. Uniqueness: Each generated component and sub-component name must be unique as they will be used to create different individuals in the ontology.
 
 Input Data Format:
 {self.get_input_prompt(self.mode)}
