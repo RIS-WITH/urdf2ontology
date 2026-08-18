@@ -11,14 +11,15 @@ class LinkMountingPointTask(VotingTask, URDFLinkTask):
         
         self.json_format = """
 {
-    "mounting_links": [
-        {
-            "target_id": "string",
-            "attachment_root": "string"
+    "mounting_links": {
+        "target_id": {
+            "attachment_root": "string",
+            "justification": "string"
+            }
         }
-    ]
 }
 """
+
         self.structured_format = {
             "type": "object",
             "properties": {
@@ -59,7 +60,7 @@ class ComponentLinkMountingPointTask(LinkMountingPointTask):
     def system_prompt(self) -> str:
         keyword_rules = {
             "body_part": (
-                "1. The Proximal Anchor: Identify the highest-level structural link at the base of the chain connecting the limb to the core component.\n"
+                "1. The Proximal Anchor: Identify the highest-level structural link at the base of the chain connecting the limb to the core component, that does not belong to that limb.\n"
                 "2. The Divergence Hub: In symmetric limbs, locate the common structural frame where those two tracks split apart."
             ),
             "sensor": (
@@ -86,7 +87,7 @@ class ComponentLinkMountingPointTask(LinkMountingPointTask):
 Task: Identify the single "Attachment Root" link for the {self.keyword} components provided in the input data.
 
 Input Data Layout:
-Each item in the input data represents a targeted component accompanied by its full kinematic chain sequence, ordered sequentially from the robot's primary root/base link (index 0) down to the functional leaf link (last index).
+Each item in the input data represents a targeted component accompanied by its full kinematic chain sequence, ordered sequentially from the robot's primary root link (index 0) down to the functional leaf link (last index).
 
 Definition:
 The Attachment Root is the physical mounting interface working as a structural boundary between the associated {self.keyword} component assembly and the main structural morphology of the robot.
@@ -94,16 +95,17 @@ The Attachment Root is the physical mounting interface working as a structural b
 Strict Boundary Elimination Rules:
 {specific_instruction}
 3. The "Unscrew" Test: If you physically unbolted or detached this entire functional {self.keyword} assembly from the robot, which structural link remains intact on the main body? That link is your Attachment Root.
-4. The Assembly Housing Exclusion: The Attachment Root MUST NOT be an internal sub-frame that is functionally part of the component assembly itself. 
-5. Lexical Substring Warning: Do not fall into naming traps. If a link name implies it belongs to internal component housings, you must trace BACKWARD (leftward in the provided array, towards index 0) until you exit that subsystem.
-6. The Core Transition Heuristic: Locate the exact transition point where the sequence shifts from the robot's main structural core into the specialized payload or limb assembly. The last link before entering the component's internal tree is the Attachment Root.
+4. The Assembly Housing Exclusion: The Attachment Root MUST NOT be an internal sub-frame that is functionally part of the component assembly itself, or the last link before the core robot structure still belonging to that {self.keyword} component. 
+5. Traversal Direction & Chassis Edge-Case: Do not fall into lexical naming traps. Trace leftward (towards index 0) until you exit the component's internal tree.
 
 Input Data Format:
 {self.get_input_prompt(self.mode)}
 
 Output Format:
-Respond strictly in JSON matching this schema format exactly: {self.json_format}
-Do not wrap code in markdown tags or include conversational text."""
+Respond strictly in JSON following this structure: {self.json_format}
+For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
+Do not include any extra text or markdown formatting.
+"""
 
     def user_prompt(self, user_input: dict) -> str:
 
@@ -135,18 +137,17 @@ Input data:
         if not isinstance(output, dict):
             return results
 
-        mounting_links = output.get("mounting_links", [])
-        if not isinstance(mounting_links, list):
+        mounting_links = output.get("mounting_links", {})
+        if not isinstance(mounting_links, dict):
             print(f"[PARSE ERROR] 'mounting_links' missing or malformed for task: {self.keyword}")
             return results
         
-
-        for entry in mounting_links:
+        for chain_id, entry in mounting_links.items():
             if not isinstance(entry, dict):
                 continue
                 
-            chain_id = entry.get("target_id")
             root_link = entry.get("attachment_root")
+            justification = entry.get("justification")
             
             if not chain_id or not root_link:
                 continue
@@ -161,7 +162,7 @@ Input data:
                     
         print(f"Interpreted {len(results)} valid {self.keyword} mounting links.")
         return results
-
+    
     def aggregate(self, votes: List[List[Tuple[str, str]]]) -> Dict[str, str]:
         per_chain_votes: Dict[str, List[str]] = defaultdict(list)
         final_consensus: Dict[str, str] = {}
