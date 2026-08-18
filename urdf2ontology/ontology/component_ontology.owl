@@ -966,7 +966,7 @@
     <!-- http://example.org/robotics#HeadAndNeckAssembly -->
 
     <owl:Class rdf:about="http://example.org/robotics#HeadAndNeckAssembly">
-        <rdfs:subClassOf rdf:resource="http://www.co-ode.org/ontologies/ont.owl#Head"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#Head"/>
     </owl:Class>
     
 
@@ -1148,7 +1148,7 @@
     <!-- http://example.org/robotics#ManipulatorArm -->
 
     <owl:Class rdf:about="http://example.org/robotics#ManipulatorArm">
-        <rdfs:subClassOf rdf:resource="http://www.co-ode.org/ontologies/ont.owl#Arm"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#Arm"/>
     </owl:Class>
     
 
@@ -1677,7 +1677,7 @@
     <!-- http://example.org/robotics#TorsoAssembly -->
 
     <owl:Class rdf:about="http://example.org/robotics#TorsoAssembly">
-        <rdfs:subClassOf rdf:resource="http://www.co-ode.org/ontologies/ont.owl#Torso"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#Torso"/>
     </owl:Class>
     
 
@@ -1842,33 +1842,33 @@
     
 
 
-    <!-- http://www.co-ode.org/ontologies/ont.owl#Arm -->
+    <!-- http://example.org/robotics#Arm -->
 
-    <owl:Class rdf:about="http://www.co-ode.org/ontologies/ont.owl#Arm">
+    <owl:Class rdf:about="http://example.org/robotics#Arm">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
     
 
 
-    <!-- http://www.co-ode.org/ontologies/ont.owl#Head -->
+    <!-- http://example.org/robotics#Head -->
 
-    <owl:Class rdf:about="http://www.co-ode.org/ontologies/ont.owl#Head">
+    <owl:Class rdf:about="http://example.org/robotics#Head">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
     
 
 
-    <!-- http://www.co-ode.org/ontologies/ont.owl#Leg -->
+    <!-- http://example.org/robotics#Leg -->
 
-    <owl:Class rdf:about="http://www.co-ode.org/ontologies/ont.owl#Leg">
+    <owl:Class rdf:about="http://example.org/robotics#Leg">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
     
 
 
-    <!-- http://www.co-ode.org/ontologies/ont.owl#Torso -->
+    <!-- http://example.org/robotics#Torso -->
 
-    <owl:Class rdf:about="http://www.co-ode.org/ontologies/ont.owl#Torso">
+    <owl:Class rdf:about="http://example.org/robotics#Torso">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
 </rdf:RDF>
