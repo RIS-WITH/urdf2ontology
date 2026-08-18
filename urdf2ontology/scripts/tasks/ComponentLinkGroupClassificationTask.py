@@ -10,14 +10,12 @@ class LinkClassificationTask(VotingTask, URDFLinkTask):
     def __init__(self, nb_runs, keyword):
         super().__init__(nb_runs, keyword)
          
-        self.json_format ="""
+        self.json_format = """
 {
-    "groups": {
-        "group_id_1": "TypeFromAllowedList",
-        "group_id_2": "TypeFromAllowedList"
+    "group_classifications": {
+        "group_id": {"link_chains": [["link_a", "link_b"], ...],"type": "TypeFromAllowedList", "justification": "string"}
     }
 }"""
-        
         self.structured_format = {
             "type": "object",
             "properties": {
@@ -54,7 +52,7 @@ class ComponentLinkGroupClassificationTask(LinkClassificationTask):
     def system_prompt(self) -> str:
         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
         
-Task: Determine the high-level functional identity of the grouped {self.keyword} component.
+Task: Determine the high-level functional identity of the grouped {self.keyword} component. The selected type will be used to type the individual representing the grouped target elements, so it should only use plausible evidence.
 Context: These groups are semantic refinements of the core parent category: '{self.parent_context}'.
 
 Allowed Types:
@@ -75,8 +73,11 @@ Input Data Format:
 {self.get_input_prompt(self.mode)}
 
 Output Format:
-Respond strictly in valid JSON matching this schema layout exactly. Do not include markdown code block tags or conversational text:
-{self.json_format}"""
+Respond strictly in JSON following this structure: {self.json_format}
+You must output each of the target element's link chains as the ordered lists of links provided in input.
+For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
+Do not include any extra text or markdown formatting.
+"""
 
     def user_prompt(self, user_input) -> str:
         self.initial_groups = dict.fromkeys(user_input.keys(), "")
@@ -107,12 +108,21 @@ Input data: {groups}"""
         if not isinstance(output, dict):
             return results
             
-        items_dict = output.get("groups", {})
+        items_dict = output.get("group_classifications", {})
         if not isinstance(items_dict, dict):
-            print(f"[PARSE ERROR] Required 'groups' dictionary key missing from output.")
+            print(f"[PARSE ERROR] Required 'group_classifications' dictionary key missing from output.")
             return results
 
-        for item_id, assigned_type in items_dict.items():
+        for item_id, entry_data in items_dict.items():
+            if not isinstance(entry_data, dict):
+                continue
+                
+            assigned_type = entry_data.get("type")
+            justification = entry_data.get("justification")
+
+            if not item_id or not assigned_type:
+                continue
+
             if item_id in self.initial_groups:
                 if assigned_type in self.valid_types:
                     results.append((item_id, assigned_type))
