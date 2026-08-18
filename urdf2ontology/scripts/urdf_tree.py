@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
 
 class URDFLink:
     def __init__(self, name: str):
@@ -34,28 +34,239 @@ class URDFLink:
                f"collisions={self.collision_count})"
 
 class URDFTree:
-    def __init__(self, urdf_path: str):
+    def __init__(self, name:str ,  urdf_path: str):
+        self.robot_name = name
         self.urdf_path = urdf_path
         self.links: Dict[str, URDFLink] = {}
         self.root: Optional[URDFLink] = None
         self.leaf_links: List[URDFLink] = []
-        self.sensor_links: List[URDFLink] = []
+        self.sensor_links: List[URDFLink] = [] # used for gazebo plugins
         self.actuator_links: List[URDFLink] = []
-        self.end_effector_links: List[URDFLink] = []
+        self.end_effector_links: List[URDFLink] = [] # used for gazebo plugins
         self.body_part_links: List[URDFLink] = []
         self._parse_urdf()
 
-    def abstract_components(self, final_groups: Dict, keep_abstracted_links = False):
+    def abstract_components_tree_safe(self, final_trees):
+        processed_count = 0
+        
+        all_classified_nodes = set()
+        global_purge_registry = set()
+        global_bridge_registry = {} # Maps link_name -> List of group IDs it belongs to
+        
+        all_attachment_roots = {tree.attachment_root for tree in final_trees.values()}
+
+        # Gather every single node classified across all tree groups
+        for tree_comp in final_trees.values():
+            all_classified_nodes.update(tree_comp.all_links)
+
+        for gid, tree_comp in final_trees.items():
+            mount_name = tree_comp.attachment_root
+            full_group_membership = set(tree_comp.all_links)
+
+            if mount_name not in self.links:
+                print(f"[SKIP] Designated mount link '{mount_name}' missing from registry for {gid}")
+                continue
+                
+            processed_count += 1
+
+            component_entry_links = []
+            for link_name in full_group_membership:
+                if link_name in self.links:
+                    current_link = self.links[link_name]
+                    if current_link.parent and (current_link.parent.name == mount_name or current_link.parent.name not in full_group_membership):
+                        component_entry_links.append(current_link)
+
+            for entry_link in component_entry_links:
+                downstream_leaves = self._find_downstream_leaves(entry_link)
+                
+                # Check if this branch leads to any completely unclassified external leaf links
+                external_leaves = [leaf for leaf in downstream_leaves if leaf.name not in all_classified_nodes]
+
+                if external_leaves:
+                    # WE CANNOT DELETE THIS BRANCH as it contains pathways to unclassified leaf nodes.
+                    print(f"[BRIDGE PRESERVATION] Branch '{entry_link.name}' reaches unclassified leaves: {[l.name for l in external_leaves]}. Keeping chain intact.")
+                    self._mark_branch_as_bridge(entry_link, all_classified_nodes, gid, global_bridge_registry)
+                else:
+                    # SAFE TO PURGE: This branch only leads to classified nodes so mark for complete deletion.
+                    self._mark_branch_for_purge(entry_link, full_group_membership, global_purge_registry)
+
+        # Step A: Apply metadata annotations to the bridge links remaining in the tree
+        for link_name, group_ids in global_bridge_registry.items():
+            if link_name in self.links:
+                target_link = self.links[link_name]
+                
+                # Set dynamic attributes directly onto the link object for your ontology parser
+                target_link.is_abstracted_bridge = True
+                if not hasattr(target_link, "associated_component_groups"):
+                    target_link.associated_component_groups = []
+                target_link.associated_component_groups.extend(group_ids)
+                
+                print(f"[TAGGED BRIDGE] Link '{link_name}' kept in tree. Indicated abstraction for groups: {group_ids}")
+
+        # Step B: Execute physical tree deletions (ensuring bridge nodes are protected)
+        purged_count = 0
+        for dead_node_name in global_purge_registry:
+            # Overriding Guard: An unclassified leaf path node can NEVER be deleted, 
+            # even if a different component marked it for purging.
+            if dead_node_name in global_bridge_registry or dead_node_name in all_attachment_roots:
+                continue
+                
+            if dead_node_name in self.links:
+                dead_node = self.links[dead_node_name]
+                
+                # Sever from active URDF tree
+                if dead_node.parent and dead_node in dead_node.parent.children:
+                    dead_node.parent.children.remove(dead_node)
+                
+                dead_node.children.clear()
+                del self.links[dead_node_name]
+                purged_count += 1
+
+        if processed_count > 0:
+            self.refresh_leaf_links()
+
+        print(f"\n[SUCCESS] Tree abstraction complete. Purged {purged_count} group-exclusive links. Tagged {len(global_bridge_registry)} bridge tracking nodes.")
+        return {"purged_count": purged_count, "bridges_tagged": list(global_bridge_registry.keys())}
+
+    # =====================================================================
+    # HELPER UTILITIES
+    # =====================================================================
+    def _find_downstream_leaves(self, current_link) -> list:
+        """Helper to find all terminal leaf links reachable from this point down the tree."""
+        if not current_link.children:
+            return [current_link]
+        leaves = []
+        for child in current_link.children:
+            leaves.extend(self._find_downstream_leaves(child))
+        return leaves
+
+    def _mark_branch_for_purge(self, current_link, group_membership, purge_set):
+        """Recursively flags a clean branch for eventual purging."""
+        if current_link.name in group_membership:
+            purge_set.add(current_link.name)
+        for child in current_link.children:
+            self._mark_branch_for_purge(child, group_membership, purge_set)
+
+    def _mark_branch_as_bridge(self, current_link, all_classified_nodes, group_id, bridge_registry):
+        """Recursively marks and tags links along paths to unclassified nodes."""
+        if current_link.name in all_classified_nodes:
+            if current_link.name not in bridge_registry:
+                bridge_registry[current_link.name] = []
+            if group_id not in bridge_registry[current_link.name]:
+                bridge_registry[current_link.name].append(group_id)
+                
+        for child in current_link.children:
+            self._mark_branch_as_bridge(child, all_classified_nodes, group_id, bridge_registry)
+    
+    def purge_abstracted_components(
+        self, 
+        final_trees: Dict[str, Any], 
+        orphan_links: Optional[Set[str]] = None
+    ) -> int:
         """
-        Collapses multi-link components into single semantic URDF links.
-        Handles parallel attachments, chained sub-trees, and cleans up the tree dictionary.
+        Removes all component links and orphan sub-trees from self.links (the URDF tree).
+        
+        Args:
+            final_trees: Dict containing component definitions.
+            orphan_links: Optional set of pre-discovered orphan link names to purge.
+                          If None, orphans will be automatically discovered during traversal.
+                          
+        Returns:
+            int: Number of links purged from the URDF tree.
         """
+        all_purged_nodes: Set[str] = set()
+
+        for gid, tree_comp in final_trees.items():
+            component_links = set(getattr(tree_comp, "all_links", []))
+            all_purged_nodes.update(component_links)
+
+            # Discover orphans if not explicitly provided
+            if orphan_links is None:
+                for link_name in component_links:
+                    if link_name in self.links:
+                        comp_link_obj = self.links[link_name]
+                        external_children = [
+                            child for child in comp_link_obj.children
+                            if child.name not in component_links
+                        ]
+                        for orphan_link in external_children:
+                            self._collect_orphan_subtree_names(
+                                orphan_link, component_links, all_purged_nodes
+                            )
+
+        if orphan_links:
+            all_purged_nodes.update(orphan_links)
+
+        # ---------------------------------------------------------------------
+        # PHYSICAL URDF PURGE
+        # ---------------------------------------------------------------------
+        purged_count = 0
+        for dead_node_name in all_purged_nodes:
+            if dead_node_name in self.links:
+                dead_node = self.links[dead_node_name]
+
+                # Sever parent connection
+                if dead_node.parent and dead_node in dead_node.parent.children:
+                    dead_node.parent.children.remove(dead_node)
+
+                dead_node.children.clear()
+                del self.links[dead_node_name]
+                purged_count += 1
+
+        if purged_count > 0:
+            self.refresh_leaf_links()
+
+        print(f"[URDF PURGE SUCCESS] Completely removed {purged_count} links from URDF model.")
+        return purged_count
+
+    def _collect_orphan_subtree_names(
+        self, current_link: Any, component_links: Set[str], purge_set: Set[str]
+    ):
+        """Recursively collects downstream orphan link names for purging."""
+        orphan_name = current_link.name
+        if orphan_name in component_links:
+            return
+
+        purge_set.add(orphan_name)
+        for child_link in list(current_link.children):
+            self._collect_orphan_subtree_names(child_link, component_links, purge_set)
+            
+
+    def _selective_purge_2(self, link: URDFLink, group_membership: set, destination_target: URDFLink):
+        """
+        Recursively processes sub-trees. Destroys component links from global registries
+        and re-parents unclassified 'stranger' links safely to the destination target.
+        """
+        # Create a shallow copy snapshot to avoid mutation race-conditions during recursion
+        current_children = list(link.children)
+        
+        for child in current_children:
+            if child.name in group_membership:
+                # Continue descending into known component territory
+                self._selective_purge_2(child, group_membership, destination_target)
+            else:
+                # Found an unclassified stranger link branching out from within the component sub-tree
+                print(f"[WARNING] Unclassified child '{child.name}' detected under component link '{link.name}'.")
+                print(f"          Preserving structural continuity: Moving tracking to anchor: '{destination_target.name}'")
+                
+                # # Sever connection from the component link that is about to be deleted
+                # link.children.remove(child)
+                
+                # # Re-parent the stranger link to keep it connected to the active robot skeleton
+                # child.parent = destination_target
+                # destination_target.add_child(child)
+
+        # 5. Global Cleanup: Erase the component link out of the master graph registry
+        if link.name in group_membership:
+            if link.name in self.links:
+                del self.links[link.name]
+                
+    def abstract_components(self, final_groups: Dict, keep_abstracted_links=False):
         for gid, group_data in final_groups.items():
             comp_type = group_data['component_type']
-            leaf_names = group_data['links']
+            leaf_names = set(group_data['links'])
             
-            # Get the mount point (e.g., 'head') from the first link's metadata
-            first_leaf = leaf_names[0]
+            first_leaf = next(iter(leaf_names))
             mount_name = group_data['details'][first_leaf]['mount']
             
             if mount_name not in self.links:
@@ -63,203 +274,438 @@ class URDFTree:
                 
             mount_link = self.links[mount_name]
 
-            # 1. Identify "Entry Points": Links in the group attached directly to the mount
-            # This handles cases where a device has multiple parallel roots
+            # Expand membership to include all intermediate links up to the mount
+            full_group_membership = set(leaf_names)
             roots_to_prune = set()
+            
             for name in leaf_names:
                 if name not in self.links: continue
                 curr = self.links[name]
-                # Traverse up until we find the link that connects to the mount
                 while curr.parent:
                     if curr.parent.name == mount_name:
                         roots_to_prune.add(curr)
+                        full_group_membership.add(curr.name)
                         break
                     curr = curr.parent
+                    full_group_membership.add(curr.name)
 
-            if not roots_to_prune:
-                continue
-
-            # 2. Create the New Semantic Link (e.g., 'RGBD_Camera_0')
             new_link_name = f"{comp_type}_{gid.split('_')[-1]}"
-            new_component = URDFLink(new_link_name)
-            
-            # Inherit joint properties from the first entry point found
-            example_root = list(roots_to_prune)[0]
-            new_component.joint_to_parent_type = example_root.joint_to_parent_type
-            new_component.joint_name = f"joint_{new_link_name}_to_{mount_name}"
+            new_component = URDFLink(new_link_name) if keep_abstracted_links else None
 
-            # 3. Recursive Purge: Remove all sub-tree links from self.links dictionary
+            # Pass both the potential new_component AND the mandatory mount_link
             for root_link in roots_to_prune:
-                self._recursive_purge(root_link)
+                self._selective_purge(root_link, full_group_membership, new_component, mount_link)
 
-            # 4. Prune from Tree Structure: Remove the old roots from the mount's children
+            # Standard cleanup of the mount's direct children
             root_names = [r.name for r in roots_to_prune]
             mount_link.children = [c for c in mount_link.children if c.name not in root_names]
 
-            if(keep_abstracted_links == True):
-                # 5. Inject the Abstraction
+            if keep_abstracted_links:
+                example_root = list(roots_to_prune)[0]
+                new_component.joint_to_parent_type = example_root.joint_to_parent_type
+                new_component.joint_name = f"joint_{new_link_name}_to_{mount_name}"
+            
                 mount_link.add_child(new_component)
                 self.links[new_link_name] = new_component
-            
-                # 6. Final Sync
-                # Remove deleted links and add the new abstracted leaf
                 self.leaf_links.append(new_component)
+                
             self.refresh_leaf_links()
-
-    def _recursive_purge(self, link: URDFLink):
-        """Removes a link and all its descendants from the tree's internal dictionary."""
-        # Recursively handle all children first
-        for child in list(link.children):
-            self._recursive_purge(child)
-        
-        # Remove this link from the global dictionary
-        if link.name in self.links:
-            del self.links[link.name]
             
+    def _selective_purge(self, link: URDFLink, group_membership: set, new_parent: URDFLink, mount_fallback: URDFLink):
+        """
+        Purges group members and re-parents 'strangers' to either the new abstraction
+        or the original mounting point.
+        """
+        for child in list(link.children):
+            if child.name in group_membership:
+                # Recursively purge children that belong to the group
+                self._selective_purge(child, group_membership, new_parent, mount_fallback)
+            else:
+                # Found a 'stranger' (unclassified link)
+                print(f"[WARNING] Unclassified child '{child.name}' detected under abstracted link '{link.name}'.")
+                print(f"          Moving '{child.name}' to mount: '{mount_fallback.name}'")
+                
+                link.children.remove(child)
+                
+                # Destination: Use the new semantic link if it exists, otherwise the original mount
+                destination = new_parent if new_parent is not None else mount_fallback
+                
+                child.parent = destination
+                destination.add_child(child)
+
+        # Final deletion of the link from the global registry
+        if link.name in group_membership and link.name in self.links:
+            print(f"Purging component link: {link.name}")
+            del self.links[link.name]
+        
     def refresh_leaf_links(self):
         """
-        Re-filters the leaf_links list to only include links that 
-        still exist in the 'self.links' dictionary.
+        Re-scans the tree to identify links that have no children.
         """
-        self.leaf_links = [l for l in self.leaf_links if l.name in self.links]
+        # A leaf is any link that currently exists and has no children
+        self.leaf_links = [
+            link for name, link in self.links.items() 
+            if len(link.children) == 0
+        ]
     
-    def deepcopy(self) -> "URDFTree":
+    def abstract_components_tree(self, final_trees, keep_abstracted_links=False):
         """
-        Create a deep copy of this URDFTree, including all links
-        and their parent/child relationships.
+        Collapses TreeComponents (Sensors/EndEffectors) into single abstracted links.
+        
+        Args:
+            final_groups: Dict mapping group_id to TreeComponent objects.
+            keep_abstracted_links: If True, replaces the group with a single 'proxy' link.
         """
-        # Create empty tree instance without parsing again
-        new_tree = URDFTree.__new__(URDFTree)
+        
+        components_to_verify = {}
+        for gid, tree_comp in final_trees.items():
+            # 1. Extract structural metadata from the pre-processed TreeComponent
+            comp_type = tree_comp.type
+            mount_name = tree_comp.attachment_root
+            base_link_name = tree_comp.assembly_base_link
+            
+            # 2. Ensure the base_link itself is in the membership set so it gets purged
+            full_group_membership = set(tree_comp.all_links)
+            if base_link_name not in full_group_membership:
+                full_group_membership.add(base_link_name)
 
-        # Copy simple attributes
-        new_tree.urdf_path = self.urdf_path
-        new_tree.links = {}
-        new_tree.root = None
-        new_tree.leaf_links = []
-        new_tree.sensor_links = []
-        new_tree.actuator_links = []
+            # 3. Validation: Check if the structural boundary exists in the current URDF
+            if mount_name not in self.links or base_link_name not in self.links:
+                print(f"[SKIP] Could not find mount '{mount_name}' or base '{base_link_name}' for {gid}")
+                components_to_verify.update({gid: tree_comp})
+                continue
+                
+            mount_link = self.links[mount_name]
+            base_link_obj = self.links[base_link_name]
 
-        # --- Step 1: Create all link copies (without relationships) ---
-        for name, link in self.links.items():
-            new_tree.links[name] = link.clone_shallow()
-            # new_link = URDFLink(name)
-            # new_link.joint_to_parent_type = link.joint_to_parent_type
-            # new_link.joint_name = link.joint_name
-            # new_link.visual_count = link.visual_count
-            # new_link.collision_count = link.collision_count
-            # new_link.gazebo_elem = link.gazebo_elem  # copy reference (deepcopy if needed)
+            # 4. Create the Abstracted Proxy Link (The "Semantic" link)
+            # Format: e.g., "rgb_camera_0" or "dual_finge_gripper_1"
+            new_link_name = f"{comp_type}_{gid.split('_')[-1]}"
+            new_component = URDFLink(new_link_name) if keep_abstracted_links else None
 
-            # new_tree.links[name] = new_link
+            # 5. Perform the Selective Purge 
+            # We start at the LCA (base_link_obj). 
+            # Strangers (links not in membership) are moved to the new_component or mount.
+            self._selective_purge(link=base_link_obj, group_membership=full_group_membership, new_parent=new_component, mount_fallback=mount_link)
 
-        # --- Step 2: Reconstruct hierarchy ---
-        for name, link in self.links.items():
-            new_link = new_tree.links[name]
+            # 6. Detach the original sub-tree root from the mount
+            # This breaks the physical connection between the robot and the old assembly base
+            mount_link.children = [c for c in mount_link.children if c.name != base_link_name]
 
-            if link.parent:
-                parent_copy = new_tree.links[link.parent.name]
-                parent_copy.add_child(new_link)
+            # 7. Finalize the Abstraction (Re-attach the Proxy)
+            if keep_abstracted_links:
+                # Inherit the kinematic properties from the original connection
+                # (e.g., if the camera was on a 'fixed' joint, the proxy stays 'fixed')
+                new_component.joint_to_parent_type = base_link_obj.joint_to_parent_type
+                new_component.joint_name = f"joint_{new_link_name}_to_{mount_name}"
+                
+                # Map the new parent-child relationship
+                new_component.parent = mount_link
+                mount_link.add_child(new_component)
+                
+                # Register the new proxy link in the global URDF index
+                self.links[new_link_name] = new_component
+                
+            # 8. Update the global leaf link list after structural changes
+            self.refresh_leaf_links()
 
-        # --- Step 3: Copy root ---
-        if self.root:
-            new_tree.root = new_tree.links[self.root.name]
-
-        # --- Step 4: Rebuild leaf list ---
-        for link in new_tree.links.values():
-            if not link.children:
-                new_tree.leaf_links.append(link)
-
-        # --- Step 5: Rebuild sensor/actuator lists ---
-        new_tree.sensor_links = [new_tree.links[link.name] for link in self.sensor_links]
-        new_tree.actuator_links = [new_tree.links[link.name] for link in self.actuator_links]
-
-        return new_tree
+        print(f"Abstraction complete. Processed {len(final_trees)} TreeComponents.")
     
-    def _collect_descendants(self, root: URDFLink) -> Set[URDFLink]:
-        """Return all descendants of root INCLUDING root."""
-        visited = set()
-        stack = [root]
-
-        while stack:
-            node = stack.pop()
-            if node not in visited:
-                visited.add(node)
-                stack.extend(node.children)
-
-        return visited
-
-    def _collect_leaves(self, nodes: Set[URDFLink]) -> Set[URDFLink]:
-        """Return leaves within a given node set."""
-        leaves = set()
-        for node in nodes:
-            if not any(child in nodes for child in node.children):
-                leaves.add(node)
-        return leaves
-
-    def _minimal_subtree(self, mounting_point: URDFLink, sensor_leaves: Set[URDFLink]) -> Set[URDFLink]:
+    def abstract_components_chain(self, final_chains, keep_abstracted_links=False):
         """
-        Return all nodes on paths from mounting_point
-        to each sensor leaf.
+        Collapses ChainComponents (Limbs, Arms, Legs) into single abstracted macro-links.
+        
+        Args:
+            final_chains: Dict mapping chain_id to ChainComponent objects.
+            keep_abstracted_links: If True, replaces the long serial chain with a single 'proxy' link.
         """
-        subtree_nodes = set()
+        for cid, chain_comp in final_chains.items():
+            # 1. Extract structural metadata from the pre-processed ChainComponent
+            comp_type = chain_comp.type
+            mount_name = chain_comp.attachment_root
+            leaf_link_name = chain_comp.end_link
+            
+            # 2. Gather full membership of the serial path to purge
+            full_chain_membership = set(chain_comp.all_links)
 
-        for leaf in sensor_leaves:
-            current = leaf
-            while current is not None and current != mounting_point:
-                subtree_nodes.add(current)
-                current = current.parent
+            # 3. Validation: Check if the structural boundaries exist in the current URDF
+            if mount_name not in self.links or leaf_link_name not in self.links:
+                print(f"[SKIP] Could not find mount '{mount_name}' or leaf '{leaf_link_name}' for {cid}")
+                continue
+                
+            mount_link = self.links[mount_name]
+            leaf_link_obj = self.links[leaf_link_name]
 
-            if current != mounting_point:
-                raise ValueError(f"Leaf '{leaf.name}' is not a descendant of mounting point '{mounting_point.name}'")
+            # 4. Create the Abstracted Proxy Link (The "Limb" link)
+            # Format: e.g., "manipulator_0" or "locomotion_leg_1"
+            new_link_name = f"{comp_type}_{cid.split('_')[-1]}"
+            new_component = URDFLink(new_link_name) if keep_abstracted_links else None
 
-        subtree_nodes.add(mounting_point)
-        return subtree_nodes
+            # 5. Perform the Selective Purge 
+            # We start at the top of the chain (the immediate child of the mount link)
+            # and purge down to the leaf link while preserving independent side branches.
+            immediate_chain_root = None
+            for child in mount_link.children:
+                if child.name in full_chain_membership:
+                    immediate_chain_root = child
+                    break
+            
+            if not immediate_chain_root:
+                print(f"[SKIP] Immediate root link of chain '{cid}' not found under mount '{mount_name}'")
+                continue
+
+            self._selective_purge(
+                link=immediate_chain_root, 
+                group_membership=full_chain_membership, 
+                new_parent=new_component, 
+                mount_fallback=mount_link
+            )
+
+            # 6. Detach the original continuous chain from the mount
+            # This breaks the physical connection between the robot and the old serial chain base
+            mount_link.children = [c for c in mount_link.children if c.name != immediate_chain_root.name]
+
+            # 7. Finalize the Abstraction (Re-attach the Proxy Link)
+            if keep_abstracted_links:
+                # Inherit the kinematic properties from the original connection to the mount
+                new_component.joint_to_parent_type = immediate_chain_root.joint_to_parent_type
+                new_component.joint_name = f"joint_{new_link_name}_to_{mount_name}"
+                
+                # Map the new parent-child relationship
+                new_component.parent = mount_link
+                mount_link.add_child(new_component)
+                
+                # Register the new proxy link in the global URDF index
+                self.links[new_link_name] = new_component
+                
+            # 8. Update the global leaf link list after structural changes
+            self.refresh_leaf_links()
+
+        print(f"Abstraction complete. Processed {len(final_chains)} ChainComponents")
+        
+    def abstract_components(self, final_components, component_type, keep_abstracted_links = False):
+        
+        if(component_type == "tree"):
+            print("Abstracting Tree Components")
+            
+            # 1. Isolate the Component Entry Nodes: Identify the highest links within the component's membership whose parents live outside the component.
+            for tree_id, tree_comp in final_components.items():
+                print(f"Abstracting component {tree_comp}")
+                mount_name = tree_comp.attachment_root
+                base_link_name = tree_comp.assembly_base_link
+                
+                # full_group_membership = set(tree_comp.all_links)
+                # if base_link_name not in full_group_membership: # check that the base_link is in the group
+                #     full_group_membership.add(base_link_name)
+                    
+                mount_link = self.links[mount_name]
+                base_link_obj = self.links[base_link_name]
+                
+                 # 4. Create the Abstracted Proxy Link (The "Semantic" link)
+                # Format: e.g., "rgb_camera_0" or "dual_finge_gripper_1"
+                new_component = URDFLink(tree_comp.semantic_name) if keep_abstracted_links else None
+                
+            # 2. Locate Non-Component Descendants: Trace all children of the component links. If a child link is not a member of the tree component, it is flagged as a structural orphan.
+            
+            # 3. Generate the Kinematic Proxy Rerouting: Create an explicit structural redirect map. Every structural orphan must have its joint parent updated to point directly to the component’s attachment_root (or an abstracted proxy link representing it).
+            
+        elif(component_type == "chain"):
+            print("Abstracting Chain Components")
+            # 1. Identify the Segment Ports: Track the segment's Inlet (the joint connecting the segment to the rest of the body) and its Outlet(s) (the joint(s) connecting the end of the segment to hands, tools, or head mounts).
+            
+            # 2. Accumulate Rigid Transformations: Programmatically multiply the static transformation matrices ($T$) of all internal fixed joints along that segment to maintain spatial accuracy.
+            
+            # 3. Reroute Outlets to Inlets: Sever the internal segment links, but heal the graph by connecting the Outlets directly to the Inlet's parent, updating the joint transforms with the accumulated spatial offsets.
+        
+    def abstract_sensor_component(self, ):
+        # each sensor group must have a reference link (optical frame, ...)
+        return
     
-    def replace_subtree(self, subtree_root_name: str, replacement_link: URDFLink):
-        """
-        Replace the subtree rooted at 'subtree_root_name' with a single 'replacement_link'.
-
-        The replacement link will take the place of the subtree root in the original tree hierarchy.
-        """
-        if subtree_root_name not in self.links:
-            raise ValueError(f"Link '{subtree_root_name}' not found in tree.")
-
-        old_root = self.links[subtree_root_name]
-        parent = old_root.parent
-
-        # --- Step 1: Collect all nodes in subtree ---
-        nodes_to_remove = []
-
-        def collect(node: URDFLink):
-            nodes_to_remove.append(node)
-            for child in node.children:
-                collect(child)
-
-        collect(old_root)
-
-        # --- Step 2: Detach from parent ---
-        if parent:
-            parent.children = [c for c in parent.children if c != old_root]
-        else:
-            # replacing actual root
-            self.root = replacement_link
-
-        # --- Step 3: Remove nodes from registry ---
-        for node in nodes_to_remove:
-            self.links.pop(node.name, None)
-
-        # --- Step 4: Insert replacement ---
-        replacement_link.parent = parent
-        replacement_link.children = []
-
-        if parent:
-            parent.add_child(replacement_link)
-
-        self.links[replacement_link.name] = replacement_link
-
-        for link in self.links.values():
-            if not link.children:
-                self.leaf_links.append(link)
+    def abstract_end_effector_component(self, ):
+        # each end_effector must have a reference link, 
+        return
     
+    def abstract_locomotion_component(self, ):
+        # each locomotion component must have a reference link (e.g., "base_link")
+        return
+    
+    def absract_body_part_component(self, ):
+        # each manipulation component must have a reference link (e.g., "shoulder_link") which ends with the end_effector link
+        return
+    
+    def abstract_tree_components_v3(self, final_trees: dict, keep_abstracted_links: bool = False) -> dict:
+
+        removed_topology_mask = {
+            "nodes": set(),       # Every link ID removed from the active URDF
+            "boundaries": {}      # Mapping of group_id -> final re-anchor point name
+        }
+        
+        processed_count = 0
+
+        for gid, tree_comp in final_trees.items():
+            comp_type = tree_comp.type
+            mount_name = tree_comp.attachment_root
+            full_group_membership = set(tree_comp.all_links)
+
+            # 1. Validation Guard
+            if mount_name not in self.links:
+                print(f"[SKIP] Could not find designated attachment root '{mount_name}' in all links for {gid}")
+                continue
+                
+            mount_link = self.links[mount_name]
+            processed_count += 1
+            
+            # Track all internal links for deletion later (excluding the root mount itself)
+            for link_name in full_group_membership:
+                if link_name in self.links and link_name != mount_name:
+                    removed_topology_mask["nodes"].add(link_name)
+
+            # 2. Boundary Scan: Find any child link hanging off a component node that is OUTSIDE the group
+            structural_orphans: List[URDFLink] = []
+            for comp_link_name in full_group_membership:
+                if comp_link_name not in self.links:
+                    continue
+                
+                comp_link = self.links[comp_link_name]
+                for child in comp_link.children:
+                    if child.name not in full_group_membership:
+                        structural_orphans.append(child)
+                        
+            if(structural_orphans):
+                print(f"[FOUND ORPHANS] Located orphan links:"),
+                for orphan in structural_orphans:
+                    print(orphan.name)
+
+            # 3. Conditional Destination Allocation => not necessary to create this proxy link
+            # Create the proxy ONLY if requested AND structural orphans actually exist
+            if keep_abstracted_links and structural_orphans:
+                if(tree_comp.semantic_name != ""):
+                    proxy_link_name = tree_comp.semantic_name
+                    proxy_link = URDFLink(proxy_link_name)
+                else:
+                    proxy_link_name = f"{comp_type}_{gid.split('_')[-1]}_proxy"
+                    proxy_link = URDFLink(proxy_link_name)
+                
+                # Hook the proxy up to the physical mount point
+                proxy_link.parent = mount_link
+                mount_link.children.append(proxy_link)
+                
+                # Register the proxy link directly into the live master registry
+                self.links[proxy_link_name] = proxy_link
+                destination_link = proxy_link
+                print(f"[PROXY CREATED] Component {gid} has {len(structural_orphans)} orphan(s). Created proxy: '{proxy_link_name}'")
+            else:
+                # Default fallback: Flatten straight to the original mounting frame
+                destination_link = mount_link
+
+            removed_topology_mask["boundaries"][gid] = destination_link.name
+
+            # 4. Orphan Rerouting Pass
+            for orphan in structural_orphans:
+                old_parent = orphan.parent
+                if old_parent and orphan in old_parent.children:
+                    old_parent.children.remove(orphan)
+                
+                # Graft the orphan onto our designated destination link (proxy or mount)
+                orphan.parent = destination_link
+                destination_link.children.append(orphan)
+                print(f"[REROUTE] Saved structural orphan '{orphan.name}' -> re-anchored to '{destination_link.name}'")
+
+        # # 5. Graph Purge pass
+        # for dead_node_name in removed_topology_mask["nodes"]:
+        #     if dead_node_name in self.links:
+        #         dead_node = self.links[dead_node_name]
+        #         if dead_node.parent and dead_node in dead_node.parent.children:
+        #             dead_node.parent.children.remove(dead_node)
+        #         del self.links[dead_node_name]
+                
+        # 5. Graph Purge Pass (With Root Mount Protection)
+        for dead_node_name in removed_topology_mask["nodes"]:
+            if dead_node_name in final_trees and dead_node_name == final_trees[gid].attachment_root:
+                print(f"[PROTECTED] Skipping deletion of attachment root node: '{dead_node_name}'")
+                continue
+                
+            if dead_node_name in self.links:
+                dead_node = self.links[dead_node_name]
+                
+                # Safely disconnect the dead node from its parent
+                if dead_node.parent and dead_node in dead_node.parent.children:
+                    dead_node.parent.children.remove(dead_node)
+                    
+                # Evict cleanly from master registry
+                del self.links[dead_node_name]
+
+        print(f"\n[SUCCESS] Abstracted {processed_count} tree components. Total links purged: {len(removed_topology_mask['nodes'])}")
+        return removed_topology_mask
+
+    def abstract_tree_components_v4(self, final_trees: dict) -> dict:
+        removed_topology_mask = {
+            "nodes": set(),       # Every link ID marked for deletion
+            "boundaries": {}      # Mapping of group_id -> final re-anchor mount point name
+        }
+        
+        # Pre-compute all attachment roots across all groups to protect them from deletion
+        all_attachment_roots = {tree.attachment_root for tree in final_trees.values()}
+
+        for gid, tree_comp in final_trees.items():
+            mount_name = tree_comp.attachment_root
+            full_group_membership = set(tree_comp.all_links)
+
+            if mount_name not in self.links:
+                print(f"[SKIP] Designated attachment root '{mount_name}' not found in links for {gid}")
+                continue
+                
+            mount_link = self.links[mount_name]
+            removed_topology_mask["boundaries"][gid] = mount_name
+            
+            # Mark all internal links for deletion (excluding the root mount itself)
+            for link_name in full_group_membership:
+                if link_name in self.links and link_name != mount_name:
+                    removed_topology_mask["nodes"].add(link_name)
+
+            # 1. Boundary Scan & Reroute: Find and save any child link outside the group
+            for comp_link_name in full_group_membership:
+                if comp_link_name not in self.links:
+                    continue
+                
+                comp_link = self.links[comp_link_name]
+                
+                # Use a static list slice to safely mutate children during iteration
+                for child in list(comp_link.children):
+                    if child.name not in full_group_membership:
+                        print(f"[WARNING] Structural orphan discovered: '{child.name}' hanging off deleted component node '{comp_link_name}'")
+                        
+                        # Sever connection from the dying internal node
+                        comp_link.children.remove(child)
+                        
+                        # Graft straight onto the physical base mounting anchor
+                        child.parent = mount_link
+                        mount_link.children.append(child)
+                        print(f"[REROUTE] Rerouted orphan '{child.name}' -> re-anchored to root mount '{mount_name}'")
+
+        # 2. Graph Purge Pass: Physical eviction from the URDFTree structure
+        purged_count = 0
+        for dead_node_name in list(removed_topology_mask["nodes"]):
+            if dead_node_name in all_attachment_roots:
+                continue
+                
+            if dead_node_name in self.links:
+                dead_node = self.links[dead_node_name]
+                
+                # Sever from parent node
+                if dead_node.parent and dead_node in dead_node.parent.children:
+                    dead_node.parent.children.remove(dead_node)
+                    
+                # Free children reference arrays to prevent lingering garbage collection tracks
+                dead_node.children.clear()
+                    
+                # Evict from master memory registry map
+                del self.links[dead_node_name]
+                purged_count += 1
+
+        print(f"\n[SUCCESS] Tree abstraction complete. Total internal links purged from structure: {purged_count}")
+        return removed_topology_mask
+
     def _parse_urdf(self):
         """Parse the URDF file and build the tree structure"""
         tree = ET.parse(self.urdf_path)
@@ -421,44 +867,6 @@ class URDFTree:
             
         return result
     
-    def get_subtree_from_link(self, link_name):
-        """Get subtree structure starting from link_name """
-        tree_cpy = self
-        
-        # The provided link_name does not exist in the tree
-        if link_name not in self.links.keys():
-            return []
-            
-        result = []
-        queue = [self.links[link_name]]
-        
-        while queue:
-            current = queue.pop(0)
-            result.append(current)
-            # Add children to queue for processing
-            queue.extend(current.children)
-            
-        return result
-    
-    def get_sublinks_from_link_str(self, link_name) -> set:
-        """Get subtree structure starting from link_name """
-        tree_cpy = self
-        result = set()
-        
-        # The provided link_name does not exist in the tree
-        if link_name not in self.links.keys():
-            return result
-    
-        queue = [self.links[link_name]]
-        
-        while queue:
-            current = queue.pop(0)
-            result.update(set(current.name))
-            # Add children to queue for processing
-            queue.extend(current.children)
-            
-        return result
-        
     def get_tree_from_leaf(self, leaf: URDFLink) -> List[URDFLink]:
         """Get tree structure from leaf to root (path up to root)"""
         if not leaf:
@@ -487,35 +895,6 @@ class URDFTree:
             
         # Return path from root to leaf
         return path[::-1]  # Reverse to get root to leaf path
-
-    def get_branches_from_node(self, node: str) -> List[List[str]]:
-        
-        link = self.get_link(node)
-        if(link == None):
-            print("Link" + node + "does not exist in the tree")
-        else:
-            branches = []
-            
-    def get_all_chain_names(self, start: URDFLink) -> List[List[str]]:
-        """
-        Returns all chains from the given link to leaf links.
-        Each chain is a list of link names.
-        """
-        chains = []
-
-        def dfs(node: URDFLink, path: List[str]):
-            path.append(node.name)
-
-            if not node.children:
-                chains.append(path.copy())
-            else:
-                for child in node.children:
-                    dfs(child, path)
-
-            path.pop()
-
-        dfs(start, [])
-        return chains
 
     def print_tree(self, max_depth: int = 10):
         """Print the tree structure"""
@@ -553,8 +932,10 @@ class URDFTree:
             joint_elem.set("type", link.joint_to_parent_type or "fixed")
 
             # Dummy values
-            if link.joint_to_parent_type in ("revolute", "prismatic"):
-                ET.SubElement(joint_elem,"limit",lower="0.0", upper="0.0", effort="0.0",velocity="0.0",)
+            # if link.joint_to_parent_type in ("revolute", "prismatic"):
+            #     ET.SubElement(joint_elem,"limit",lower="0.0", upper="0.0", effort="0.0",velocity="0.0",)
+            # elif link.joint_to_parent_type == "continuous":
+            #     ET.SubElement(joint_elem, "limit", effort="0.0", velocity="0.0")
                 
             ET.SubElement(joint_elem, "parent", link=link.parent.name)
             ET.SubElement(joint_elem, "child", link=link.name)
@@ -594,14 +975,32 @@ class URDFTree:
             'joint_type': link.joint_to_parent_type,
             'joint_name': link.joint_name
         }
+           
+    def build_link_element(self, link: URDFLink) -> Dict:
+        """Build comprehensive context about the frame for analysis"""
+        if(link.parent):
+            return {
+                'parent': link.parent.name,
+                'joint': {"name": link.joint_name,  "type":link.joint_to_parent_type},
+                'child': link.name
+            }
+        else:
+            return {}
     
-    def build_hierarchy_from_leaf(self, link: URDFLink) -> str:
-        example = "head_link --(camera_mount_joint: fixed)--> camera_link"
+    def build_textual_link_element(self, link: URDFLink) -> str:
         # ex:  parent_link --[joint_name:joint_type]--> child_link
         elem = ""
         if(link.parent != None):
             joint = f" --[{link.joint_name}:{link.joint_to_parent_type}]--> "
             elem = link.parent.name + joint + link.name
+        return elem
+    
+    def build_csv_hierarchy_from_leaf(self, link: URDFLink) -> str:
+        # ex:  ["parent_link", "joint_name", "joint_type", "child_link"]
+        elem = ""
+        if(link.parent != None):
+            elem = [link.parent.name, link.joint_name, link.joint_to_parent_type, link.name]
+        
         return elem
     
     def build_frame_context_from_link(self, link: URDFLink, frames: List) -> List:
@@ -613,7 +1012,7 @@ class URDFTree:
         if link is None:
             return frames
 
-        frames.append(self.build_frame_context_without_joints(link))
+        frames.append(self.build_textual_link_element(link))
 
         for child in link.children or []:
             self.build_frame_context_from_link(child, frames)
@@ -714,118 +1113,6 @@ class URDFTree:
             return node_dict
 
         return _build(root)  
-    
-    def get_ancestors(self, link: URDFLink):
-        ancestors = []
-
-        current = link
-        while current is not None:
-            ancestors.append(current)
-            current = current.parent
-
-        return ancestors
-
-    def find_lowest_common_ancestor(self, links: List[URDFLink]) -> URDFLink:
-        """
-        Returns the lowest common ancestor of given links.
-        """
-
-        ancestor_sets = [set(self.get_ancestors(link))for link in links]
-        common = set.intersection(*ancestor_sets)
-
-        # Pick the deepest one = farthest from root
-        def depth(link):
-            d = 0
-            while link.parent is not None:
-                link = link.parent
-                d += 1
-            return d
-
-        return max(common, key=depth)
-    
-    def find_highest_common_ancestor(self, links: list[URDFLink]) -> URDFLink:
-        """
-        Returns the highest common ancestor among a list of URDFLink nodes.
-        """
-
-        # Get ancestor chains and reverse to root -> leaf
-        ancestor_chains = [list(reversed(self.get_ancestors(link))) for link in links]
-
-        # Walk down from root
-        hca = ancestor_chains[0][0]  # start with root
-        for i in range(len(ancestor_chains[0])):
-            candidate = ancestor_chains[0][i]
-            if all(len(chain) > i and chain[i] == candidate for chain in ancestor_chains):
-                hca = candidate
-            else:
-                break
-
-        return hca
-
-    def get_path_from_ancestor(self, ancestor: URDFLink, descendant: URDFLink):
-        path = []
-        current = descendant
-
-        while current != ancestor:
-            path.append(current)
-            current = current.parent
-
-        path.append(ancestor)
-        return list(reversed(path))
-    
-    def get_component_nodes(self, leaf_links: List[URDFLink]):
-
-        lca = self.find_lowest_common_ancestor(leaf_links)
-        nodes = set()
-
-        for leaf in leaf_links:
-            path = self.get_path_from_ancestor(lca, leaf)
-            nodes.update(path)
-
-        return lca, nodes
-    
-    def collect_component_subtree(self, root: URDFLink):
-
-        nodes = set()
-
-        def dfs(link):
-            nodes.add(link)
-
-            for child in link.children:
-                dfs(child)
-
-        dfs(root)
-        return nodes
-    
-    def build_subtree_dict(self, root: URDFLink, allowed_nodes: set):
-
-        def recurse(node):
-
-            return {
-                "name": node.name,
-                "joint_type": node.joint_to_parent_type,
-                "children": [
-                    recurse(child)
-                    for child in node.children
-                    if child in allowed_nodes
-                ]
-            }
-
-        return recurse(root)
-    
-    def extract_component_subtree(self, leaf_links: List[URDFLink]):
-
-        lca, nodes = self.get_component_nodes(leaf_links)
-        subtree = self.build_subtree_dict(lca, nodes)
-
-        return subtree, lca
-    
-    def extract_component_subtree(self, leaf_links_str: List[str]):
-        leaf_links = [self.get_link(link) for link in leaf_links_str]
-        lca = self.find_lowest_common_ancestor(leaf_links)
-        nodes = self.collect_component_subtree(lca)
-
-        return self.build_subtree_dict(lca, nodes), lca
     
 if __name__ == "__main__":
     # For this test, let's create a proper, clean output
