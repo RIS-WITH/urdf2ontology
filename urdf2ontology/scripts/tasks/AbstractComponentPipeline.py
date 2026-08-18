@@ -17,94 +17,13 @@ from LLMInterface import *
 import numpy as np
 
 class AbstractComponentPipeline():
-    def __init__(self, keyword, nb_runs, ontology_handler):
+    def __init__(self, keyword, nb_runs, ontology_handler, paths):
         self.keyword = keyword
         self.nb_runs = nb_runs
         self.ontology_handler = ontology_handler
-        self.llm_module = LLMInterface("gpt-oss:20b", 0.7) #"gpt-oss:20b", "magistral:24b", "qwen3.6:27b", "gemma3:27b"
+        self.llm_module = LLMInterface("gpt-oss:20b", 0.6) #"gpt-oss:20b", "magistral:24b", "qwen3.6:27b", "gemma3:27b"
+        self.paths = paths
    
-    # # initial function
-    # def run_pipeline(self, urdf_tree: URDFTree, robot_components: ComponentLinks, full_verbose = False, export_result = False):
-    #     self.init_urdf = urdf_tree
-        
-    #     # print(urdf_tree.render_tree(start_link="narrow_stereo_link"))
-    #     # print(urdf_tree.render_tree(start_link="narrow_stereo_link", show_joint_info=True))
-    #     robot_leaf_links = urdf_tree.get_leaf_links()
-    #     leaf_links_str = [leaf.name for leaf in robot_leaf_links]
-    #     robot_leaf_links_dict = {'links': leaf_links_str}
-
-    #     print(f"<==== 1. IDENTIFICATION TASK ====>") # no need for joint types and names as we gather entry points
-    #     component_identif = ComponentLinkIdentificationTask(self.nb_runs, self.keyword)
-    #     result_identif = self.llm_module.run_task(component_identif, robot_leaf_links_dict, verbose=full_verbose)
-    #     print(f"Final Link identification task: {result_identif}")
-
-    #     robot_components.add_identified_component_links(result_identif)
-        
-    #     print(f"<==== 2. ATTACHMENT ROOT DETECTION TASK ====>") 
-    #     component_mounting = ComponentLinkMountingPointTask(self.nb_runs, self.keyword)
-    #     result_mounting = self.llm_module.run_task(component_mounting, robot_components.initial_chains, verbose=full_verbose)
-    #     print(f"Final Link attachment root detection task: {result_mounting}")
-        
-    #     robot_components.add_trimmed_component_chains(result_mounting)
-     
-    #     print(f"<==== 3. PRE-CLASSIFICATION TASK ====>")
-    #     pre_classification_task = ComponentLinkSingleClassificationTask(self.nb_runs, self.keyword)
-
-    #     upper_concept = pre_classification_task.parent_context + "Subpart"
-    #     init_link_states = {name: upper_concept for name in robot_components.trimmed_chains.keys()}
-    #     link_states = self.run_iterative_classification(pre_classification_task, init_link_states, robot_components.trimmed_chains, 5, verbose = full_verbose)
-    #     print(f"Final Pre-Classification Task: {link_states}")
-        
-    #     robot_components.add_preclassif(link_states)
-        
-    #     print(f"<==== 4. GROUPING TASK ====>")
-    #     component_grouping = ComponentLinkGroupingTask(self.nb_runs, self.keyword)
-        
-    #     result_grouping = self.llm_module.run_task(component_grouping, robot_components.trimmed_chains, verbose=True)
-    #     print(f"Final Link grouping task: {result_grouping}")
-        
-    #     robot_components.add_component_groups(result_grouping, self.keyword)
-    
-    #     robot_components.build_component_groups(robot_components.trimmed_chains, 
-    #                                             robot_components.component_preclassif, 
-    #                                             robot_components.component_groups,
-    #                                             self.keyword)
-        
-    #     print(f"<==== 5. POST-CLASSIFICATION TASK ====>")
-    #     post_classification_task = ComponentLinkGroupClassificationTask(self.nb_runs, self.keyword)
-        
-    #     upper_concept = post_classification_task.parent_context
-    #     init_group_states = {gid: upper_concept for gid in robot_components.final_groups.keys()}
-    #     group_states = self.run_iterative_classification(post_classification_task, init_group_states, robot_components.final_groups, 5, verbose = full_verbose)
-    #     print(f"Final Post-Classification Task: {group_states}")
-        
-    #     robot_components.add_postclassif(group_states)
-        
-    #     print(" =================== BUILDING FINAL GROUPS =================")
-    #     final_groups = robot_components.build_final_group_mapping(robot_components.final_groups, robot_components.component_postclassif)
-    #     print(f"Final Link Groups: {final_groups}")
-        
-    #     # # ============== Ontology Population & verification ============
-    #     print(f"<==== 7. ONTOLOGY POPULATION TASK ====>")
-    #     self.populate_ontology_groups(final_groups)
-        
-    #     # ======== unused
-    #     # GET THE URDF SUB-TREE EMBEDDING EACH GROUP
-    #     # for group_id in final_groups.keys():
-    #     #     sub_tree = self.extract_component_as_tree(self.init_urdf, group_id, final_groups=final_groups)
-    #     #     print(sub_tree.print_tree())
-    #     #     robot_components.urdf_groups.update({group_id: sub_tree})
-        
-    #     urdf_tree.abstract_components(final_groups)
-        
-    #     if(export_result):
-    #         robot_name = self.init_urdf.urdf_path.split('/')[-1].split('.')[0]
-    #         path = f"/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/results/log_{robot_name}_{self.keyword}.json"
-    #         with open(path, 'w') as f:
-    #             json.dump(final_groups, f, indent=2)
-        
-    #     return urdf_tree
-    
     # top-down
     def run_chain_pipeline(self, urdf_tree: URDFTree, robot_components: ComponentLinks, full_verbose: bool = False, save_intermediate: bool = False, load_intermediate: bool = False) :
         # Used for bodyparts abstraction
@@ -115,7 +34,7 @@ class AbstractComponentPipeline():
         user_input = {f"link_{i}": link for i, link in enumerate(robot_leaf_links_dict["links"])}
         
         if(load_intermediate):
-            path = "/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology"
+            path = self.paths["main_path"]
             robot_components.components = np.load(path + f"/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", allow_pickle= True).item()
             
         else:
@@ -170,14 +89,9 @@ class AbstractComponentPipeline():
                     sequence_str = " then ".join(segment_ids)
                     print(f"{comp_id} is composed of {sequence_str}")
                     
-            # TO DO: hide the segment state dict (into a flattened dict?)
             flat_segments = {seg.id: seg for chain in robot_components.components.values() for seg in chain.segments}
             upper_concept = "BodyPartSubpart"
             init_segment_states = {seg.id: upper_concept for seg in flat_segments.values()}
-            
-            # print("INIT SEGMENT STATES : ", init_segment_states)
-            # TO DO: remove duplicates before classification (e.g., [base_link, torso])
-            # generate a set of tuples for each subchain (sub_component)
             
             print(f"<==== 5. POST-CLASSIFICATION SEGMENTS TASK ====>")
             post_classification_task = ComponentLinkSingleClassificationTask(self.nb_runs, self.keyword, "links")
@@ -213,11 +127,9 @@ class AbstractComponentPipeline():
             robot_components.assign_semantic_names(result_link_naming, "chain")
             
             # =============== INTERMEDIARY SAVE CHECKPOINT ============= 
-            #np.save("/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/tmp.npy", robot_components.bodypart_components)
-            #robot_components.bodypart_components =  np.load("/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/tmp.npy", allow_pickle= True)
             if(save_intermediate):
-                np.save(f"/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/urdf/eval/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", robot_components.components)
-                robot_components.components =  np.load(f"/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/urdf/eval/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", allow_pickle= True).item()
+                np.save(self.paths["eval"] + f"/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", robot_components.components)
+                robot_components.components =  np.load(self.paths["eval"] + f"/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", allow_pickle= True).item()
             
                 
         print(f"<==== 7. ONTOLOGY POPULATION TASK ====>")
@@ -236,7 +148,7 @@ class AbstractComponentPipeline():
         # urdf_tree.abstract_components_chain(robot_components.components, False)
         
         # Save timing
-        report_path = f"/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/eval/timing_{urdf_tree.robot_name}_{self.keyword}.json"
+        report_path = self.paths["eval"] + f"/timing_{urdf_tree.robot_name}_{self.keyword}.json"
         self.llm_module.save_metrics(report_path)
         
         return urdf_tree
@@ -244,8 +156,7 @@ class AbstractComponentPipeline():
     # bottom-up
     def run_tree_pipeline(self, urdf_tree: URDFTree, robot_components: ComponentLinks, verbose: bool = False, save_intermediate: bool = False, load_intermediate: bool = False) :
         self.init_urdf = urdf_tree
-        # print(urdf_tree.render_tree(start_link="narrow_stereo_link"))
-        # print(urdf_tree.render_tree(start_link="narrow_stereo_link", show_joint_info=True))
+
         robot_leaf_links = urdf_tree.get_leaf_links()
         leaf_links_str = [leaf.name for leaf in robot_leaf_links]
         robot_leaf_links_dict = {'links': leaf_links_str}
@@ -253,24 +164,21 @@ class AbstractComponentPipeline():
         user_input = {f"link_{i}": link for i, link in enumerate(robot_leaf_links_dict["links"])}
                
         if(load_intermediate):
-            path = "/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology"
+            path = self.paths["main_path"]
             robot_components.merged_components = np.load(path + f"/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", allow_pickle= True).item()
         else:
 
             print(f"<==== 1. IDENTIFICATION TASK ====>")
             component_identif = ComponentLinkIdentificationTask(self.nb_runs*5, self.keyword)
-            #result_identif = self.llm_module.run_task(component_identif, robot_leaf_links_dict, verbose=True)
             result_identif = self.llm_module.run_batched_task(component_identif, user_input, batch_size=10, verbose=True)
             print(f"Final Link identification task: {result_identif}")
 
             robot_components.create_component_links(result_identif, "branch")
                          
-            print(f"<==== 2. ATTACHMENT ROOT DETECTION TASK ====>") # requires several runs (minimum 3) -> batch
+            print(f"<==== 2. ATTACHMENT ROOT DETECTION TASK ====>")
             component_mounting = ComponentLinkMountingPointTask(self.nb_runs*5, self.keyword, "kinematic_csv")
             result_mounting = self.llm_module.run_batched_task(component_mounting, robot_components.components, 
                                                                batch_size = 5, verbose=verbose, verbose_thinking = False)
-            # version witout batching
-            # result_mounting = self.llm_module.run_task(component_mounting, robot_components.components, verbose=verbose, verbose_thinking = False)
             print(f"Final Link attachment root detection task: {result_mounting}") 
             robot_components.add_attachment_root_components(result_mounting)
            
@@ -284,7 +192,7 @@ class AbstractComponentPipeline():
             
             robot_components.add_preclassification_components(link_states)
         
-            print(f"<==== 4. GROUPING TASK ====>") # requires several runs (minimum 3)
+            print(f"<==== 4. GROUPING TASK ====>")
             component_grouping = ComponentLinkGroupingTask(self.nb_runs*5, self.keyword, "links")
             result_grouping = self.llm_module.run_task(component_grouping, robot_components.components, verbose=verbose, verbose_thinking = False)
             print(f"Final Link grouping task: {result_grouping}")
@@ -308,28 +216,18 @@ class AbstractComponentPipeline():
             
             robot_components.assign_semantic_names(result_link_naming, "tree")
         
-        # OPTIONAL CHECKPOINT IN NUMPY ARRAY
         if(save_intermediate):
-            path = "/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/urdf/eval/"
+            path = self.paths["eval"]
             np.save(path + f"/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", robot_components.merged_components)
 
-        # print(f"<==== 6. LINK NAMING TASK ====>")
-        # component_link_naming = ComponentLinkNamingTask(self.nb_runs, self.keyword, "tree_component", "links")
-        # result_link_naming = self.llm_module.run_task(component_link_naming, robot_components.merged_components, verbose=True, verbose_thinking=False)
-        # print(f"Final Link Naming task: {result_link_naming}")
-        
-        # robot_components.assign_semantic_names(result_link_naming, "tree")
-            
         # ============== Ontology Population & verification ============
         print(f"<==== 7. ONTOLOGY POPULATION TASK ====>")
+        
+        for comp in robot_components.merged_components.values():
+            print(comp)
+            
         #self.populate_ontology_tree_groups(robot_components.merged_components, False)
         #urdf_tree.abstract_components_tree_safe(robot_components.merged_components)
-        
-        # GET THE URDF SUB-TREE EMBEDDING EACH GROUP
-        # for group_id in final_groups.keys():
-        #     sub_tree = self.extract_component_as_tree(self.init_urdf, group_id, final_groups=final_groups)
-        #     print(sub_tree.print_tree())
-        #     robot_components.urdf_groups.update({group_id: sub_tree})
         
         # 1. Populate Ontology 
         orphan_links = self.populate_ontology_tree(urdf_tree=urdf_tree, final_trees=robot_components.merged_components)
@@ -337,15 +235,8 @@ class AbstractComponentPipeline():
         # 2. Purge URDF Tree Structure
         urdf_tree.purge_abstracted_components(final_trees=robot_components.merged_components, orphan_links=orphan_links)
         
-        for comp in robot_components.merged_components.values():
-            print(comp)
-            
-        # removed_topology_mask = urdf_tree.abstract_components_tree_v4(robot_components.merged_components, True)
-        # print(removed_topology_mask)
-        # self.populate_ontology_and_abstract_trees(robot_components.merged_components)
-        
-        # urdf_tree.abstract_tree_components_v3(robot_components.merged_components, False)
-        report_path = f"/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/eval/timing_{urdf_tree.robot_name}_{self.keyword}.json"
+
+        report_path = self.paths["eval"] + f"/timing_{urdf_tree.robot_name}_{self.keyword}.json"
         self.llm_module.save_metrics(report_path)
         
         return urdf_tree
@@ -437,10 +328,7 @@ class AbstractComponentPipeline():
                 
                 for link in segment_comp.link_chain: # assert the link frames as data properties
                     self.ontology_handler.feeder.addDataRelation(segment_name, 'hasLinkFrame', "string", link) # i.e., hasLinkFrame(pepper_right_arm, string#"pepper_right_shoulder_frame")
-        if(save_intermediate):
-            robot_name = self.init_urdf.urdf_path.split('/')[-1].split('.')[0]
-            self.ontology_handler.actions.save("/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/results/abstraction_" + robot_name +  "_" + self.keyword +".owl") 
-            
+      
     def populate_ontology_tree_groups(self, final_tree_groups: Dict[str, RobotComponent], save_intermediate = False):
         
          for tree_comp in final_tree_groups.values():
@@ -474,9 +362,9 @@ class AbstractComponentPipeline():
                 for link in sub_comp.link_chain: # assert the link frames as data properties
                     self.ontology_handler.feeder.addDataRelation(sub_comp_name, 'hasLinkFrame', "string", link)
                     
-            # if(save_intermediate):
-            #     robot_name = self.init_urdf.urdf_path.split('/')[-1].split('.')[0]
-            #     self.ontology_handler.actions.save("/home/bdussard/ros2_ws/src/urdf2ontology/urdf2ontology/results/abstraction_" + robot_name +  "_" + self.keyword +".owl") 
+            if(save_intermediate):
+                robot_name = self.init_urdf.urdf_path.split('/')[-1].split('.')[0]
+                self.ontology_handler.actions.save(self.paths["main_path"] + "/results/abstraction_" + robot_name +  "_" + self.keyword +".owl") 
      
     # main function for ontology population
     def populate_ontology(self, abstracted_robot: AbstractedRobotLinks, ontology_handler):
