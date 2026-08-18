@@ -232,16 +232,48 @@ class ComponentLinks():
                 component.attachment_root = mounting_point
                 idx = component.link_chain.index(mounting_point) # get the index of the attachment root
                 component.assembly_base_link = component.link_chain[idx+1] # first link after the mounting point
+                
+                self.trim_component_below_root(component)
                 # Trim each of the subchain from after the attachment root to their leaf link
-                component.link_chain = component.link_chain[idx+1:]
-                component.dict_kinematic_sequence = component.dict_kinematic_sequence[idx+1:]
-                component.textual_kinematic_sequence = component.textual_kinematic_sequence[idx+1:]
-                component.csv_kinematic_sequence = component.csv_kinematic_sequence[idx+1:]
+                # component.link_chain = component.link_chain[idx+1:]
+                # component.dict_kinematic_sequence = component.dict_kinematic_sequence[idx+1:]
+                # component.textual_kinematic_sequence = component.textual_kinematic_sequence[idx+1:]
+                # component.csv_kinematic_sequence = component.csv_kinematic_sequence[idx+1:]
             # else: # if the output did not generate a mounting point for that link
             #     print(f"Warning! -> The Link {link} has not been processed as having an attachment root.") 
                 # component.attachment_root = component.link_chain[-2] # get the link just above the leaf link
                 # component.assembly_base_link = link
-  
+    
+    def trim_component_below_root(self, component: RobotComponent) -> RobotComponent:
+        root = component.attachment_root 
+
+        if root in component.link_chain:
+            idx = component.link_chain.index(root)
+            component.link_chain = component.link_chain[idx + 1:] 
+
+        csv_idx = next(
+            (i for i, row in enumerate(component.csv_kinematic_sequence) if row[0] == root),
+            None
+        )
+        if csv_idx is not None:
+            component.csv_kinematic_sequence = component.csv_kinematic_sequence[csv_idx:]
+
+        dict_idx = next(
+            (i for i, entry in enumerate(component.dict_kinematic_sequence) if entry.get("parent") == root),
+            None
+        )
+        if dict_idx is not None:
+            component.dict_kinematic_sequence = component.dict_kinematic_sequence[dict_idx:]
+
+        txt_idx = next(
+            (i for i, text in enumerate(component.textual_kinematic_sequence) if text.startswith(root)),
+            None
+        )
+        if txt_idx is not None:
+            component.textual_kinematic_sequence = component.textual_kinematic_sequence[txt_idx:]
+
+        return component
+
     def add_preclassification_components(self, link_states):
         for comp_id, comp in self.components.items():
             classified_type = link_states.get(comp_id, "")
