@@ -1,25 +1,6 @@
-# "Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF" [accepted]
+# URDF2Ontology
 
-This repository contains the implementation of a partially-closed loop pipeline designed to automate the abstraction of robotic hardware. By leveraging the reasoning capabilities of Large Language Models (LLMs) grounded by a domain-expert ontology, the system transforms URDF data into a structured, machine-readable knowledge base (populated ontology).
-
-# Methodology:
-The following summarizes the pipeline's methodology for abstracting a given component type (Sensor, End-effector).
-```
-Step 1. Identification Task:
-- Input all URDF leaf links -> Output only links relevant to the component type.
-Step 2. Attachment Root Detection Task:
-- Input selected kinematic chains (root to leaf) -> Output the component's monting point.
-Step 3. Pre-Classification Task:
-- Input each trimmed kinematic chain along with component subparts taxonomy from the ontology -> Output a classification for each chain.
-Step 4. Group Merging Task:
-- Input all trimmed kinematic chains -> Output clustered links in component groups.
-Step 5. Post-Classification Task:
-- Input each group with their trimmed kinematic chain along with component types taxonomy from the ontology -> Output a classification for each group.
-Step 6. Abstraction Verification Task:
-- Verify that each component group can be abstracted from the URDF structure without forgetting unidentified links.
-Step 7. Ontology Population Task:
-- Populate the ontology based on the functional groups identified, with their upper-type, their sub-components and their lower-level types.
-```
+While symbolic reasoning over task allocation requires grounding a robot's physical capabilities, standard Universal Robot Description Format (URDF) files provide low-level kinematics without formal semantic context to be reasoned on. We present URDF2Ontology, an automated, taxonomy-agnostic neurosymbolic framework that transforms raw URDF into populated, formally grounded OWL ontologies. To eliminate LLM context window saturation during graph parsing, our system introduces an iterative \textit{sequential graph-purging} mechanism paired with a morphology-aware dual-track architecture: a bottom-up *Tree Track* for branching assemblies and a top-down *Chain Track* for continuous serial limbs. Using constrained LLM primitives, URDF2Ontology extracts functional sub-graphs and asserts formally consistent Description Logic populated ontology against arbitrary user-provided taxonomy.
 
 # Project Structure
 ```
@@ -42,15 +23,3 @@ Step 7. Ontology Population Task:
 5. Run ontologenius with ros2 launch ontologenius ontologeniu_empty.xml
 6. Run the main loop with python3 main.py
 ```
-
-## Citation
-If you use this work in your research, please cite the following paper as below:
-
-BibTeX:
-```bibtex
-@article{dussard2026extracting},
-  author    = {Dussard, Bastien and Sarthou, Guillaume},
-  title     = {Extracting Semantics: LLM-Guided Automatic Population of Robot Ontology from URDF},
-  booktitle = {18th International Conference on Social Robotics (ICSR + ART 2026)},
-  year      = {2026},
-  note      = {accepted for publication}
