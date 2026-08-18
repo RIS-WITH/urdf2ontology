@@ -1,6 +1,104 @@
 from urdf_tree import URDFLink, URDFTree
-from typing import List
-from dataclasses import dataclass
+from typing import List, Any, Dict, List, Set
+from dataclasses import dataclass, field
+
+@dataclass 
+class RobotComponent:
+    """Used for all components (upper assembly or sub-components), contains an identifier (camera_0), a type (Camera) and an attachment root being a link (head_link), links contain the ordered subchain representing the component (["camera_link", "camera_link_optical"])"""
+    id: str = ""                      # component identifier (e.g., segment_1_3)
+    semantic_name: str = ""           # component name after naming task (e.g., left_arm)
+    type: str = ""                    # ontology type
+    attachment_root: str = ""         # structural boundary between abstracted component and rest of the robot's composition
+    link_chain: List[str] = field(default_factory=list) # Subchain representing the abstracted component (ordered sequence)
+    textual_kinematic_sequence: List[str] = field(default_factory=list) # Textual version of the subchain ( parent_link --> (joint_name:type) --> child_link )
+    dict_kinematic_sequence: List[Dict[str, Any]] = field(default_factory=list) # Dict version of the subchain (with parent, joint and child arguments)
+    csv_kinematic_sequence: List[Dict[str, Any]] = field(default_factory=list) # CSV kinematic sequences
+    
+    def get_chain_dict(self):
+        return {self.id: self.link_chain}
+    
+    def __str__(self) -> str:
+        chain_preview = " -> ".join(self.link_chain)
+        return (f"[{self.type}] ID: {self.id}\n"
+                f"  └─ Root: {self.attachment_root}\n"
+                f"  └─ Semantic Name: {self.semantic_name}\n"
+                f"  └─ Link Chain: {chain_preview or 'Empty'}")
+        
+    def get_kinematic_chain(self, mode):
+        if mode == "links":
+            return self.link_chain
+        elif mode == "kinematic_dict":
+            return self.dict_kinematic_sequence
+        elif mode == "kinematic_txt":
+            return self.textual_kinematic_sequence
+        elif mode == "kinematic_csv":
+            return self.csv_kinematic_sequence
+        else:
+            print(f"Warning: Unknown operational mode '{mode}' encountered.")
+            return 
+    
+@dataclass  
+class SegmentElement(RobotComponent):
+    """Used for sub sequential components (limbs), adds the upper and end joint for representing motion planning chains"""
+    segment_upper_joint: str = ""    # The joint connecting this to the previous segment
+    segment_end_link: str = ""       # The last link in this specific segment
+    
+    def __str__(self) -> str:
+        base_info = super().__str__()
+        return (f"{base_info}\n"
+                f"  └─ Segment: Joint({self.segment_upper_joint}) -> End Link({self.segment_end_link})")
+
+@dataclass
+class ChainComponent(RobotComponent): # Contains 
+    """Contains components which are chain-like (limbs with segments) -> sequential."""
+    root_joint: str = ""             # e.g., "shoulder_pan_joint" (joint between the attachment root and the first link)
+    assembly_base_link: str = ""     # e.g., "r_shoulder_link" (first link in the segments)
+    end_link: str = ""               # e.g., "r_gripper_frame_link" (last link the sequence)
+    segments: List[SegmentElement] = field(default_factory=list)  # ordered sequence of functional segments
+   
+    all_links: set[str] = field(default_factory=set)
+    all_joints: set[str] = field(default_factory=set)
+    
+    def __str__(self) -> str:
+        header = f"  CHAIN COMPONENT: {self.id} ({self.type})"
+        body = (f"  Attachment Root: {self.attachment_root}\n"
+                f"  Joint: {self.root_joint}\n"
+                f"  Base Link: {self.assembly_base_link}\n"
+                f"  End Link: {self.end_link}\n"
+                f"  Segments ({len(self.segments)}):")
+        
+        seg_info = ""
+        for i, seg in enumerate(self.segments):
+            indented_seg = str(seg).replace("\n", "\n      ")
+            seg_info += f"\n    ({i}) {indented_seg}"
+            
+        return f"{header}\n{body}{seg_info}"
+
+@dataclass    
+class TreeComponent(RobotComponent):
+    """Contains components which are tree-like (end-effector & sensor assemblies with sub-parts) -> paralell."""
+    mounting_joint: str = ""           # Joint connecting the assembly to the bodypart (e.g., "wrist_roll_joint" or "head_camera_joint")
+    assembly_base_link: str = ""       # The first link of the component assembly (e.g., "r_gripper_link" or "head_camera_link")
+    
+    branches: List[RobotComponent] = field(default_factory=list) # contains all sub-components that are part of an assembly unit
+
+    # Global list of all links and joints involved in the tree
+    all_links: set[str] = field(default_factory=set)
+    all_joints: set[str] = field(default_factory=set)
+           
+    def __str__(self) -> str:
+        header = f" TREE COMPONENT: {self.id} ({self.type})"
+        body = (f"  Attachment Root: {self.attachment_root}\n"
+                f"  Semantic Name: {self.semantic_name}\n"
+                f"  Mounting Joint: {self.mounting_joint}\n"
+                f"  Base Link: {self.assembly_base_link}\n"
+                f"  Structure:")
+        
+        sub_info = ""
+        for branch in self.branches:
+            sub_info += f"\n\t└─{branch.id}: {branch.semantic_name} ({branch.type}) {branch.link_chain}"
+            
+        return f"{header}\n{body}{sub_info or ' (No sub-elements)'}"
 
 @dataclass  
 class ComponentGroup:
@@ -25,325 +123,559 @@ class ComponentLinks():
         self.component_types = {} # 'sensor_0': 'RGBCameraSystem' (post classification task)
         self.temp_components = {} # before verification (validation task)
         self.valid_components = {} # after verification (validation task)
+        
+        self.urdf_groups = {} # after the pass {'sensor_0': URDFSubTree}
+        
+        # used for the new version with dataclass structures instead of dicts
+        self.components = {} # contains RobotComponent elements
+        self.merged_components = {} # contains either TreeComponent or ChainComponent
+        
+        self.sensor_components = {}
+        self.end_effector_components = {}
+        self.bodypart_components = {}
+        
+    def find_group_lca(self, group_links, trimmed_chains):
+        """
+        Finds the Lowest Common Ancestor for a group of links.
+        """
+        if not group_links:
+            return None
+        
+        # 1. Get the full paths for all links in the group
+        # We need the full path from Robot Root to the specific Link
+        paths = []
+        for link in group_links:
+            if link in trimmed_chains:
+                # We reconstruct the path: [root, ..., parent, link]
+                path = trimmed_chains[link]['kinematic_chain'] + [link]
+                paths.append(path)
+        
+        if not paths:
+            return group_links[0] # Fallback
 
-    def add_initial_chain(self, link, chain):
-        self.initial_chains.update({link: chain})
+        # 2. Find the shortest path to avoid IndexErrors
+        min_length = min(len(p) for p in paths)
+        
+        lca = paths[0][0] # Start with the absolute root (e.g., base_link)
+        
+        # 3. Iterate through the paths index by index
+        for i in range(min_length):
+            # Get the link at index 'i' for the first path
+            current_link = paths[0][i]
+            
+            # Check if this link is the same at this index for ALL paths
+            if all(p[i] == current_link for p in paths):
+                lca = current_link
+            else:
+                # The paths have diverged! The previous 'lca' was the last common one.
+                break
+                
+        return lca  
     
-    def add_identified_component_links(self, result_identif):
+    def find_lca_from_paths(self, paths: List[List[str]]) -> str:
+        """
+        Finds the Lowest Common Ancestor from a list of chains.
+        """
+        if not paths or not paths[0]:
+            return None
+        
+        # 1. Start with the first path as a reference
+        reference_path = paths[0]
+        lca = None
+        
+        # 2. Compare each index across all paths
+        for i in range(len(reference_path)):
+            current_node = reference_path[i]
+            
+            # Check if this node exists at index i in ALL other paths
+            for other_path in paths[1:]:
+                # If a path is shorter or has a different node, we've hit the divergence
+                if i >= len(other_path) or other_path[i] != current_node:
+                    return lca
+            
+            # All paths share this node
+            lca = current_node
+                
+        return lca
+
+    def create_component_links(self, result_identif, component_type = "branch"):
+        cpt = 0
         for identified_component in result_identif:
-            chain_element = self.initial_urdf_tree.get_tree_from_leaf(identified_component)
-            self.add_initial_chain(identified_component, chain_element)
-            
-    def add_trimmed_chain(self, link, mount, chain):
-        self.trimmed_chains[link] = {'attachment_root': mount, 
-                                     'kinematic_chain' : chain}
-        
-    def add_trimmed_component_chains(self, result_mounting):
-        for link, mounting_point in result_mounting.items():
-            involved_link_chain = self.initial_chains[link]
-            mounting_point_index = involved_link_chain.index(mounting_point)
-            trimmed_chain = involved_link_chain[mounting_point_index:]
-            self.add_trimmed_chain(link, mounting_point, trimmed_chain)
+            if(component_type == "chain"):
+                new_id = "chain_" + str(cpt)
+                new_component = ChainComponent(id=new_id, end_link=identified_component)
+            elif(component_type == "tree"):
+                new_id = "tree_" + str(cpt)
+                new_component = TreeComponent(id=identified_component)
+            elif(component_type == "branch"):
+                new_component = RobotComponent(id=identified_component)
+                new_id = identified_component
+            elif(component_type == "segment"):
+                new_component = SegmentElement(id=identified_component)
+                new_id = identified_component
+                
+            new_component.link_chain = self.initial_urdf_tree.get_tree_from_leaf(identified_component)
+            # Add the kinematic sequence inputs (link + joint names/types)
+            for ln in new_component.link_chain[1:]: # remove first link as it has no parent 
+                link = self.initial_urdf_tree.get_link(ln)
+                new_component.dict_kinematic_sequence.append(self.initial_urdf_tree.build_link_element(link))
+                new_component.textual_kinematic_sequence.append(self.initial_urdf_tree.build_textual_link_element(link))
+                new_component.csv_kinematic_sequence.append(self.initial_urdf_tree.build_csv_hierarchy_from_leaf(link))
 
-    def add_preclassif(self, result):
-        for link, concept in result.items():
-            self.component_preclassif.update({link: concept})
-            
-    def add_postclassif(self, result):
-        for group_id, concept in result.items():
-            self.component_postclassif.update({group_id: concept})
+            self.components.update({new_id: new_component}) # or bodypart_components
+            cpt += 1
         
-    def add_component_group(self, component_id, links, chains):
-        self.component_groups[component_id] = [links, chains]
-        for link in links:
-            self.mapping_link_groups[link] = component_id
-
-    def add_component_groups(self, result_grouping, keyword):
+    def add_attachment_root_components(self, result_mounting: Dict[str, str]):
+        for link, component in self.components.items():
+            mounting_point = result_mounting.get(link, "")
+            if(mounting_point != ""):
+                component.attachment_root = mounting_point
+                idx = component.link_chain.index(mounting_point) # get the index of the attachment root
+                component.assembly_base_link = component.link_chain[idx+1] # first link after the mounting point
+                # Trim each of the subchain from after the attachment root to their leaf link
+                component.link_chain = component.link_chain[idx+1:]
+                component.dict_kinematic_sequence = component.dict_kinematic_sequence[idx+1:]
+                component.textual_kinematic_sequence = component.textual_kinematic_sequence[idx+1:]
+                component.csv_kinematic_sequence = component.csv_kinematic_sequence[idx+1:]
+            # else: # if the output did not generate a mounting point for that link
+            #     print(f"Warning! -> The Link {link} has not been processed as having an attachment root.") 
+                # component.attachment_root = component.link_chain[-2] # get the link just above the leaf link
+                # component.assembly_base_link = link
+  
+    def add_preclassification_components(self, link_states):
+        for comp_id, comp in self.components.items():
+            classified_type = link_states.get(comp_id, "")
+            if(classified_type != ""):
+                comp.type = classified_type
+            else:
+                print(f"Warning: The component {comp_id} has no classified type.")
+                    
+        for link, concept in link_states.items():
+            self.components[link].type = concept
+        
+    def create_grouped_components(self, result_grouping, keyword):
         for i, component_links in enumerate(result_grouping):
             component_id = f"{keyword}_{i}"
-            component_subchains = []
-
-            for link in component_links:
-                component_subchains.append(link)
-            self.component_groups[component_id] = component_subchains # we store the list of links in the group ["linkA", "linkB"]
-            
-
-    def add_component_classif(self, component_id, comp_type):
-        self.component_types[component_id] = comp_type
-        
-    def add_component_group_classification(self, result_classif):
-        for component_id, component_type in result_classif.items():
-            self.add_component_classif(component_id, component_type)
-            
-    def create_component_group(self, verbose = False):
-
-        for component_id in self.component_groups.keys():
-            if(self.component_types[component_id] != None and self.component_groups[component_id] != None):
-                
-                new_component = ComponentGroup(component_id=component_id, 
-                                               component_leaf_links=self.component_groups[component_id][0], 
-                                               component_subchains=self.component_groups[component_id][1], 
-                                               component_type=self.component_types[component_id])
-                
-                self.temp_components[component_id] = new_component
-                if(verbose):
-                    self.print_component_group(component_id)
+            new_upper_component = TreeComponent(id=component_id, type="", attachment_root="")
+            all_chains = [] 
+            attachment_root = ""
+            for sublink in component_links:
+                selected_subcomponent = self.components[sublink]
+                if(attachment_root == ""):
+                    attachment_root = selected_subcomponent.attachment_root
+                elif(attachment_root != selected_subcomponent.attachment_root):
+                    print("Warning: Different attachment roots found between grouped links ->", attachment_root, "!=", selected_subcomponent.attachment_root)
+                all_chains.append(selected_subcomponent.link_chain) # right now only supports link_chain but could be extended with txt and dict kinematic
+                new_upper_component.branches.append(selected_subcomponent) # add the sub-component as one of the tree branches
     
-    def abstract_component(self, keyword = "", verbose = False) -> URDFTree:
-        print(f"Abstracting {keyword} components")
-        # create a deep copy of the initial tree
-        refined_urdf_tree = self.initial_urdf_tree.deepcopy()
-      
-        # modify the refined_tree to abstract away valid components
-        for component_id, valid_component in self.valid_components.items():
-            new_link_name = valid_component.component_type.lower() + "_" + valid_component.component_id
-            refined_urdf_tree.replace_subtree(valid_component.component_mounting_link, URDFLink(new_link_name))
-            # append to the sensor_links
-            refined_urdf_tree.sensor_links.append(refined_urdf_tree.get_link(new_link_name))
-        print(refined_urdf_tree.sensor_links)
-        return refined_urdf_tree
-            
-    def print_component_group(self, component_id):
-        selected_component = self.temp_components[component_id]
-        if(selected_component == None):
-            print("Invalid component identifier")
-        else:
-            print("Component: ", component_id)
-            print("Component Type:", selected_component.component_type)
-            # print("Mounting Link:", selected_component.component_mounting_link)
-            print("Leaf Links:", selected_component.component_leaf_links)
-            print("Subchains:")
-            for chain in selected_component.component_subchains:
-                print(chain)
-
-    def print_link(self, link_name):
-        if link_name in self.initial_chains:
-            print("Identified Leaf with chain:", self.initial_chains[link_name])
-        if link_name in self.trimmed_chains:
-            print("Trimmed Leaf chain:", self.trimmed_chains[link_name])
-        if link_name in self.mapping_link_groups:
-            self.print_component_group(self.mapping_link_groups[link_name])
-    
-    def build_component_groups(self, trimmed_chains, component_preclassif, grouped_links):
-        """
-        Args:
-            trimmed_chains: {"link": [mount, trimmed_subchain]} - From Mounting Task
-            component_preclassif: {"link": "Type"} - From Pre-classification Task
-            grouped_links: {'sensor_0': [linkA, linkB, ...]} - From Grouping Task
-            
-        Returns:
-            Dict: { 'sensor_0': [(link, type, mount, trimmed_subchain), ...] }
-        """
-        final_component_groups = {}
+            new_upper_component.assembly_base_link = self.find_lca_from_paths(all_chains) # get the lca for the upper component
+            new_upper_component.attachment_root = attachment_root                                     # update the attachment root as well
+            new_upper_component.all_links = {link for chain in all_chains for link in chain}          # output all links in the chains
+            self.merged_components.update({component_id: new_upper_component})
         
-        # Iterate over the existing groups defined by the Grouping Task
-        for group_id, links in grouped_links.items():
-            group_tuples = []
+    def add_postclassification(self, group_states):
+        for group, concept in group_states.items():
+            self.merged_components[group].type = concept
             
-            for link in links:
-                # 1. Retrieve the pre-classified type for this link
-                link_type = component_preclassif.get(link, f"UnknownSensor") # needs to be set with the CamelCase keyword version
+    def create_segments_chain(self, result_segments):
+        for chains in result_segments: # loop over subchains
+            selected_component = self.components.get(chains["chain_id"])
+            chain_number = chains["chain_id"].split("_")[-1]  # get the chain number (e.g. chain_2)
+            cpt = 0
+            for identified_segment in chains["identified_segments"]:  # loop over segments in each chain
+                segment_id = "segment_" + chain_number + "_" + str(cpt) # create a segment id (e.g., segment_2_3)
+                segment_links = identified_segment["links"]
+                first_link = self.initial_urdf_tree.get_link(segment_links[0]) # get the parent link of the first link in the segement (e.g., torso_link for shoulder_link)
+
+                new_segment = SegmentElement(id=segment_id, type = selected_component.type + "BodyPart", segment_end_link=segment_links[-1])
+                if(first_link.parent != None):
+                    new_segment.attachment_root = first_link.parent.name
+                    new_segment.segment_upper_joint = first_link.joint_name
+                    
+                new_segment.link_chain = segment_links
+                # Update the kinematic sequence inputs
+                for ln in new_segment.link_chain[1:]: # remove first link as it has no parent 
+                    link = self.initial_urdf_tree.get_link(ln)
+                    new_segment.dict_kinematic_sequence.append(self.initial_urdf_tree.build_link_element(link))
+                    new_segment.textual_kinematic_sequence.append(self.initial_urdf_tree.build_textual_link_element(link))
+                    new_segment.csv_kinematic_sequence.append(self.initial_urdf_tree.build_csv_hierarchy_from_leaf(link))
                 
-                # 2. Retrieve mounting and subchain info from trimmed_chains
-                # mount_info is expected to be [mount, trimmed_subchain]
-                mount_info = trimmed_chains.get(link)
-                
-                if mount_info:
-                    mount = mount_info['attachment_root']
-                    trimmed_subchain = mount_info['kinematic_chain']
+                selected_component.segments.append(new_segment) # add the new segment to the chain component
+                for link in segment_links:
+                    selected_component.all_links.add(link)
+                    # new_component.all_joints. # add the joints?
+                cpt += 1
+            
+    def add_postclassification_segments(self, segment_states):
+        for chain_id, chain_comp in self.components.items(): # Loop over the chain components
+            for segment_comp in chain_comp.segments:
+                classified_type = segment_states.get(segment_comp.id, "")
+                if(classified_type != ""):
+                    segment_comp.type = classified_type
                 else:
-                    # Fallback if the link wasn't processed in the mounting task
-                    mount = "UnknownMount"
-                    trimmed_subchain = "NoSubchain"
-                
-                # 3. Append the tuple to the current group's list
-                group_tuples.append((link, link_type, mount, trimmed_subchain))
-                
-            # Assign the list of tuples to the group ID
-            final_component_groups[group_id] = group_tuples
-        # append to final group
-        self.final_groups = final_component_groups
-        # return final_component_groups
-        
-    def build_final_group_mapping(self, final_component_groups, group_states):
-        """
-        Args:
-            final_component_groups: { 'sensor_0': [(link, subpart, mount, subchain), ...] }
-            group_states: { 'sensor_0': 'RGBD_Camera' }
-            
-        Returns:
-            Dict: { 
-                'sensor_0': {
-                    'component_type': 'RGBD_Camera',
-                    'links': ['kinect_ir_link', 'kinect_rgb_link'],
-                    'details': {
-                        'kinect_ir_link': {'subpart': 'IrReceiver', 'mount': 'head', 'subchain' : []},
-                        'kinect_rgb_link': {'subpart': 'RgbFrame', 'mount': 'head', 'subchain': []}
-                    }
-                }
-            }
-        """
-        final_output = {}
+                    print(f"Warning: The segment {segment_comp.id} has no classified type.")
+    
+    def assign_semantic_names(self, result_naming, type = "tree"):
+        if(type == "tree"):
+            for tree_id, tree_comp in self.merged_components.items():
+                if(tree_id in result_naming.keys()):
+                    tree_comp.semantic_name = result_naming[tree_id]
+                    for branch in tree_comp.branches:
+                        if(branch.id in result_naming.keys()):
+                            branch.semantic_name = result_naming[branch.id]
+                else:
+                    print(f"Warning: The tree {tree_id} has no assigned name.")
+        elif(type == "chain"):
+            for chain_id, chain_comp in self.components.items(): 
+                if(chain_id in result_naming.keys()):
+                    chain_comp.semantic_name = result_naming[chain_id]
+                    for segment in chain_comp.segments:
+                        if(segment.id in result_naming.keys()):
+                            segment.semantic_name = result_naming[segment.id]
+                else:
+                    print(f"Warning: The chain {chain_id} has no assigned name.")
+                    
+    def assert_names_into_components(
+        merged_components: Dict[str, Any], raw_llm_output: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Flattens chain-based LLM output and assigns semantic names to macro entities
 
-        for group_id, component_type in group_states.items():
-            # Initialize the group entry
-            final_output[group_id] = {
-                "component_type": component_type,
-                "links": [],
-                "details": {}
+        and their internal SegmentElement objects.
+        """
+        generated_names = raw_llm_output.get("generated_names", {})
+
+        # 1. Build a unique lookup table for segment names (deduplicating across chains)
+        segment_name_map: Dict[str, str] = {}
+        chain_name_map: Dict[str, str] = {}
+
+        for chain_id, chain_data in generated_names.items():
+            comp_name = chain_data.get("component_name")
+            sub_comps = chain_data.get("sub_components", {})
+
+            for seg_id, seg_name in sub_comps.items():
+                if seg_id not in segment_name_map:
+                    segment_name_map[seg_id] = seg_name
+
+        # 2. Iterate through macro entities and update segments
+        for entity_id, entity_data in merged_components.items():
+            segments = (
+                entity_data.get("segments", [])
+                if isinstance(entity_data, dict)
+                else getattr(entity_data, "segments", [])
+            )
+
+            matched_seg_names = []
+
+            for seg in segments:
+                # Extract segment ID regardless of whether it's a dict or dataclass/object
+                seg_id = (
+                    seg.get("id") if isinstance(seg, dict) else getattr(seg, "id", None)
+                )
+
+                if seg_id and seg_id in segment_name_map:
+                    assigned_name = segment_name_map[seg_id]
+
+                    # Assert name onto segment object or dictionary
+                    if isinstance(seg, dict):
+                        seg["semantic_name"] = assigned_name
+                    else:
+                        seg.semantic_name = assigned_name
+
+                    matched_seg_names.append(assigned_name)
+
+            # 3. Assign macro entity semantic name based on macro type and assigned segments
+            macro_type = (
+                entity_data.get("macro_type", "Component")
+                if isinstance(entity_data, dict)
+                else getattr(entity_data, "type", "Component")
+            )
+
+            # Build clean entity name from primary segment or macro type
+            if matched_seg_names:
+                primary_name = matched_seg_names[0]
+                entity_semantic_name = (
+                    f"{primary_name}_assembly"
+                    if "assembly" not in primary_name
+                    else primary_name
+                )
+            else:
+                entity_semantic_name = macro_type.lower()
+
+            if isinstance(entity_data, dict):
+                entity_data["semantic_name"] = entity_semantic_name
+            else:
+                entity_data.semantic_name = entity_semantic_name
+
+        print(
+            f"Successfully asserted names for {len(segment_name_map)} unique segments across {len(merged_components)} macro entities."
+        )
+        return merged_components
+                    
+    # def build_macro_entities_dict(self, grouped_entities: list) -> dict:
+    #     """
+    #     Maps the grouped LLM output (List[List[List[str]]]) back to SegmentElement instances.
+    #     Deduplicates segments into a single macro entity dictionary.
+    #     """
+    #     # 1. Build a reverse lookup from tuple(link_chain) -> (SegmentElement, ParentComponent)
+    #     segment_lookup = {}
+    #     for comp_id, component in self.components.items():
+    #         for segment in component.segments:
+    #             # Map exact link chain tuple to the SegmentElement
+    #             segment_lookup[tuple(segment.link_chain)] = (segment, component)
+
+    #     macro_entities_dict = {}
+
+    #     # 2. Process each grouped entity (macro body part)
+    #     for idx, entity_subchains in enumerate(grouped_entities):
+    #         seen_segments = {}          # Map of segment_id -> SegmentElement (deduplicated)
+    #         all_entity_links = set()    # Set of all URDF links in this macro entity
+    #         attachment_roots = set()    # Set of mount links / attachment roots
+    #         lower_segment_types = set() # Set of lower-level segment types
+    #         parent_chain_types = set()  # Set of parent component types
+
+    #         for subchain_links in entity_subchains:
+    #             chain_key = tuple(subchain_links)
+                
+    #             # Lookup segment instance by exact link sequence
+    #             if chain_key in segment_lookup:
+    #                 segment, parent_comp = segment_lookup[chain_key]
+                    
+    #                 # Deduplicate segment by ID
+    #                 if segment.id not in seen_segments:
+    #                     seen_segments[segment.id] = segment
+    #                     lower_segment_types.add(segment.type)
+                        
+    #                     if hasattr(segment, 'attachment_root') and segment.attachment_root:
+    #                         attachment_roots.add(segment.attachment_root)
+                        
+    #                     if hasattr(parent_comp, 'type') and parent_comp.type:
+    #                         parent_chain_types.add(parent_comp.type)
+
+    #                 all_entity_links.update(segment.link_chain)
+    #             else:
+    #                 # Fallback: Match individual links if segment boundary changed slightly
+    #                 all_entity_links.update(subchain_links)
+
+    #         # 3. Derive primary entity metadata
+    #         # Resolve primary attachment root (common root or first encountered)
+    #         primary_mount = next(iter(attachment_roots)) if attachment_roots else "unknown_root"
+            
+    #         # Resolve primary macro component type
+    #         primary_type = next(iter(parent_chain_types)) if parent_chain_types else "MacroBodyPart"
+            
+    #         entity_id = f"{primary_type.lower()}_entity_{idx}"
+
+    #         # 4. Store consolidated entity in the new container
+    #         macro_entities_dict[entity_id] = {
+    #             "entity_id": entity_id,
+    #             "macro_type": primary_type,
+    #             "mount_link": primary_mount,
+    #             "all_mount_links": list(attachment_roots),
+    #             "lower_level_segment_types": list(lower_segment_types),
+    #             "all_links": sorted(list(all_entity_links)),
+    #             "segments": list(seen_segments.values()) # Deduplicated list of SegmentElement instances
+    #         }
+
+    #     return macro_entities_dict
+    
+    # def build_macro_entities_dict(self, grouped_entities: list) -> dict:
+    #     macro_entities_dict = {}
+
+    #     for idx, entity_subchains in enumerate(grouped_entities):
+    #         seen_segments = {}
+    #         all_entity_links = set()
+    #         attachment_roots = set()
+    #         lower_segment_types = set()
+    #         parent_chain_types = set()
+
+    #         for subchain_links in entity_subchains:
+    #             subchain_set = set(subchain_links)
+    #             all_entity_links.update(subchain_links)
+                
+    #             # Find any SegmentElement that shares links with this subchain
+    #             matched = False
+    #             for comp_id, component in self.components.items():
+    #                 for segment in component.segments:
+    #                     # Match if the segment's links overlap with the subchain links
+    #                     if set(segment.link_chain).intersection(subchain_set):
+    #                         matched = True
+    #                         if segment.id not in seen_segments:
+    #                             seen_segments[segment.id] = segment
+    #                             lower_segment_types.add(segment.type)
+                                
+    #                             if getattr(segment, 'attachment_root', None):
+    #                                 attachment_roots.add(segment.attachment_root)
+    #                             if getattr(component, 'type', None):
+    #                                 parent_chain_types.add(component.type)
+
+    #         primary_mount = next(iter(attachment_roots)) if attachment_roots else "unknown_root"
+    #         primary_type = next(iter(parent_chain_types)) if parent_chain_types else "MacroBodyPart"
+    #         entity_id = f"{primary_type.lower()}_entity_{idx}"
+
+    #         macro_entities_dict[entity_id] = {
+    #             "entity_id": entity_id,
+    #             "macro_type": primary_type,
+    #             "mount_link": primary_mount,
+    #             "all_mount_links": list(attachment_roots),
+    #             "lower_level_segment_types": list(lower_segment_types),
+    #             "all_links": sorted(list(all_entity_links)),
+    #             "segments": list(seen_segments.values())
+    #         }
+
+    #     return macro_entities_dict
+    
+    def build_macro_entities_dict(self, grouped_entities: list) -> dict:
+        macro_entities_dict = {}
+
+        for idx, entity_subchains in enumerate(grouped_entities):
+            seen_segments = {} # Now maps tuple(link_chain) -> SegmentElement
+            all_entity_links = set()
+            attachment_roots = set()
+            lower_segment_types = set()
+            parent_chain_types = set()
+
+            for subchain_links in entity_subchains:
+                subchain_set = set(subchain_links)
+                all_entity_links.update(subchain_links)
+                
+                for comp_id, component in self.components.items():
+                    for segment in component.segments:
+                        # Match if the segment's links overlap with the subchain
+                        if set(segment.link_chain).intersection(subchain_set):
+                            
+                            # FIX: Deduplicate by the actual physical links, not the arbitrary ID
+                            physical_chain_key = tuple(segment.link_chain)
+                            
+                            if physical_chain_key not in seen_segments:
+                                seen_segments[physical_chain_key] = segment
+                                lower_segment_types.add(segment.type)
+                                
+                                if getattr(segment, 'attachment_root', None):
+                                    attachment_roots.add(segment.attachment_root)
+                                if getattr(component, 'type', None):
+                                    parent_chain_types.add(component.type)
+
+            primary_mount = next(iter(attachment_roots)) if attachment_roots else "unknown_root"
+            primary_type = next(iter(parent_chain_types)) if parent_chain_types else "MacroBodyPart"
+            entity_id = f"{primary_type.lower()}_entity_{idx}"
+
+            macro_entities_dict[entity_id] = {
+                "entity_id": entity_id,
+                "macro_type": primary_type,
+                "mount_link": primary_mount,
+                "all_mount_links": list(attachment_roots),
+                "lower_level_segment_types": list(lower_segment_types),
+                "all_links": sorted(list(all_entity_links)),
+                "segments": list(seen_segments.values()) # Returns the deduplicated segments
             }
-            
-            # Pull link-specific data from the intermediate tuple list
-            tuple_list = final_component_groups.get(group_id, [])
-            
-            for link, subpart, mount, subchain in tuple_list:
-                # 1. Add to the flat list of links
-                final_output[group_id]["links"].append(link)
-                
-                # 2. Add specific metadata for that link
-                final_output[group_id]["details"][link] = {
-                    "subpart_type": subpart,
-                    "mount": mount,
-                    "subchain": subchain
-                }
-                
-        return final_output
-            
-        
+
+        return macro_entities_dict
+    
+    def canonicalize_segments(all_raw_segments: list) -> dict:
+        """
+        Collapses identical link chains into a single canonical SegmentElement
+        while preserving all mount links and parent chain context.
+        """
+        canonical_dict = {}  # tuple(link_chain) -> SegmentElement
+
+        for seg in all_raw_segments:
+            chain_key = tuple(seg.link_chain)
+
+            if chain_key not in canonical_dict:
+                # Store the primary canonical instance
+                canonical_dict[chain_key] = seg
+                seg.all_attachment_roots = {seg.attachment_root} if hasattr(seg, 'attachment_root') else set()
+            else:
+                # Merge context (e.g., attachment roots) into the existing canonical segment
+                existing_seg = canonical_dict[chain_key]
+                if hasattr(seg, 'attachment_root') and seg.attachment_root:
+                    existing_seg.all_attachment_roots.add(seg.attachment_root)
+
+        return canonical_dict
+    
+    def create_segments_chain_canonical(self, result_segments: list) -> list:
+        """
+        Creates canonical SegmentElement instances by collapsing identical link chains.
+        Aggregates parent chain types, mount links, and links them to their upper components.
+        """
+        canonical_segments = {}  # Map: tuple(segment_links) -> SegmentElement
+        segment_counter = 0
+
+        for chains in result_segments:  # Loop over subchains
+            selected_component = self.components.get(chains["chain_id"])
+
+            for identified_segment in chains["identified_segments"]:  # Loop over segments in chain
+                segment_links = identified_segment["links"]
+                chain_key = tuple(segment_links)
+
+                # Extract upper joint and mount link (attachment root)
+                first_link = self.initial_urdf_tree.get_link(segment_links[0])
+                attachment_root = first_link.parent.name if (first_link and first_link.parent) else None
+                segment_upper_joint = first_link.joint_name if (first_link and first_link.parent) else None
+
+                if chain_key not in canonical_segments:
+                    # 1. Create primary canonical SegmentElement
+                    segment_id = f"segment_{segment_counter}"
+                    segment_counter += 1
+
+                    new_segment = SegmentElement(
+                        id=segment_id,
+                        type=selected_component.type + "BodyPart",
+                        segment_end_link=segment_links[-1]
+                    )
+
+                    if attachment_root:
+                        new_segment.attachment_root = attachment_root
+                        new_segment.segment_upper_joint = segment_upper_joint
+
+                    new_segment.link_chain = segment_links
+
+                    # Track multiple mount links and upper chain types across overlapping chains
+                    new_segment.all_attachment_roots = {attachment_root} if attachment_root else set()
+                    new_segment.parent_chain_types = {selected_component.type} if hasattr(selected_component, 'type') else set()
+
+                    # Build kinematic sequence details
+                    for ln in new_segment.link_chain[1:]:
+                        link = self.initial_urdf_tree.get_link(ln)
+                        new_segment.dict_kinematic_sequence.append(self.initial_urdf_tree.build_link_element(link))
+                        new_segment.textual_kinematic_sequence.append(self.initial_urdf_tree.build_textual_link_element(link))
+                        new_segment.csv_kinematic_sequence.append(self.initial_urdf_tree.build_csv_hierarchy_from_leaf(link))
+
+                    canonical_segments[chain_key] = new_segment
+                else:
+                    # 2. Retrieve existing canonical instance and aggregate incoming metadata
+                    new_segment = canonical_segments[chain_key]
+
+                    if attachment_root:
+                        new_segment.all_attachment_roots.add(attachment_root)
+                    if hasattr(selected_component, 'type') and selected_component.type:
+                        new_segment.parent_chain_types.add(selected_component.type)
+
+                # 3. Attach canonical instance to component without duplicates
+                if new_segment not in selected_component.segments:
+                    selected_component.segments.append(new_segment)
+
+                for link in segment_links:
+                    selected_component.all_links.add(link)
+
+        return list(canonical_segments.values())
+    
 class SensorLinks(ComponentLinks):
     def __init__(self, urdf_tree: URDFTree):
         super().__init__(urdf_tree)
-    
-    def verify_connectivity(self, identified_links_set) -> bool:
-
-        visited = set()
-        stack = [next(iter(identified_links_set))]
-
-        while stack:
-            current_name = stack.pop()
-
-            if current_name not in visited:
-                visited.add(current_name)
-
-                current_link = self.initial_urdf_tree.get_link(current_name)
-                neighbors = self.initial_urdf_tree.get_neighbors(current_link)
-
-                for neighbor in neighbors:
-                    neighbor_name = neighbor.name
-                    if neighbor_name in identified_links_set and neighbor_name not in visited:
-                        stack.append(neighbor_name)
-
-        if visited != identified_links_set:
-            print("Sensor group is not connected")
-            print("Visited:", visited)
-            print("Expected:", identified_links_set)
-            return False
-
-        print("Connectivity check passed")
-        return True
-        
-    def verify_internal_completeness(self, sensor, identified_links_set) -> bool:
-
-        mounting_link = sensor.component_mounting_link
-
-        for link_name in identified_links_set:
-            link = self.initial_urdf_tree.get_link(link_name)
-
-            for child in link.children:
-                # If child is outside group
-                if child.name not in identified_links_set:
-
-                    # Allowed only if this is the mounting link
-                    if link_name == mounting_link:
-                        continue
-
-                    print("Missing internal descendant:", child.name)
-                    return False
-
-        print("Internal completeness check passed")
-        return True
-    
-    def verify_single_attachment(self, identified_links_set) -> bool:
-        external_neighbors = set()
-
-        for link_name in identified_links_set:
-            urdf_link = self.initial_urdf_tree.get_link(link_name)
-            neighbors = self.initial_urdf_tree.get_neighbors(urdf_link)
-
-            for neighbor in neighbors:
-                neighbor_name = neighbor.name
-                if neighbor_name not in identified_links_set:
-                    external_neighbors.add(neighbor_name)
-
-        if len(external_neighbors) != 1:
-            print("Invalid number of external attachments:", external_neighbors)
-            return False
-
-        mounting_link = list(external_neighbors)[0]
-        print("Single external attachment check passed")
-        print("-> Mounting link detected as:", mounting_link)
-        return True
-         
-    def verify_abstraction(self) -> List[ComponentGroup]:
-        # each sensor group is (id, class, mounting_point, leaf_links, subchains)
-        # if verified, create hasMountingLink/isMountingLinkOf, hasInternalLink (abstracted links), hasInternalJoint, observesPhysicalQuantity some Image, Depth, etc
-        # A connected, internally closed subgraph with exactly one external interface.
-        print("Verifying sensors ==== ")
-        validated_components, rejected_components = [], []
-
-        for sensor_id in self.temp_components:
-            print(sensor_id)
-            self.print_component_group(sensor_id)
-            sensor = self.temp_components[sensor_id]
-            print("Verifying sensor:", sensor.component_id)
-            
-            identified_links_set = set()
-            for subchain in sensor.component_subchains:
-                identified_links_set.update(set(subchain))
-                
-            if not identified_links_set:
-                print("Sensor group is empty")
-                rejected_components.append(sensor)
-                continue
-            
-            # checking that each of the branch in the subchains is indeed connected
-            if(self.verify_connectivity(identified_links_set) == False):
-                rejected_components.append(sensor)
-                continue
-            
-            if(self.verify_internal_completeness(sensor, identified_links_set) == False):
-                rejected_components.append(sensor)
-                continue
-            
-            # verify that each of the leaf links in the group attach at a single mounting point
-            if(self.verify_single_attachment(identified_links_set) == False):
-                rejected_components.append(sensor) # if false -> THEN ONLY ABSRACT THE IDENTIFIED LEAF LINK or if there is several chains the component, common ancestor
-                continue
-            
-            validated_components.append(sensor)
-            
-        return (validated_components, rejected_components)
 
 class ActuatorLinks(ComponentLinks):
     def __init__(self, urdf_tree: URDFTree):
         super().__init__(urdf_tree)
-        
-    def verify_abstraction(self) -> List[ComponentGroup]:
-        print("Verifiying")
 
 class EndEffectorLinks(ComponentLinks):
     def __init__(self, urdf_tree: URDFTree):
         super().__init__(urdf_tree)
         
-    def verify_abstraction(self) -> List[ComponentGroup]:
-        print("Verifiing")
-        
 class BodyPartLinks(ComponentLinks):
     def __init__(self, urdf_tree: URDFTree):
         super().__init__(urdf_tree)
         
-    def verify_abstraction(self) -> List[ComponentGroup]:
-        print("Verifiing")
 
 class AbstractedRobotLinks:
     def __init__(self, name, path, urdf_tree):
@@ -354,62 +686,8 @@ class AbstractedRobotLinks:
         self.actuator_links = ActuatorLinks(urdf_tree)
         self.end_effector_links = EndEffectorLinks(urdf_tree)
         self.body_part_links = BodyPartLinks(urdf_tree)
-
-    def get_links_object(self, keyword):
-        mapping = {
-            "sensor": self.sensor_links,
-            "actuator": self.actuator_links,
-            "end_effector": self.end_effector_links,
-            "body_part": self.body_part_links
-        }
-        return mapping[keyword]
-
-    def add_identified_component_links(self, result_identif, keyword=""):
-        links_obj = self.get_links_object(keyword)
-        for identified_component in result_identif:
-            chain_element = self.urdf_tree.get_tree_from_leaf(identified_component)
-            links_obj.add_initial_chain(identified_component, chain_element)
-
-    def add_trimmed_component_chains(self, result_mounting, keyword=""):
-        links_obj = self.get_links_object(keyword)
-        for link, mounting_point in result_mounting.items():
-            involved_link_chain = links_obj.initial_chains[link]
-            mounting_point_index = involved_link_chain.index(mounting_point)
-            trimmed_chain = involved_link_chain[mounting_point_index:]
-            links_obj.add_trimmed_chain(link, mounting_point, trimmed_chain)
-
-    def add_component_groups(self, result_grouping, keyword=""):
-        links_obj = self.get_links_object(keyword)
-        for i, (component_links, component_parent) in enumerate(result_grouping):
-            component_id = f"{keyword}_{i}"
-            component_subchains = []
-            for link in component_links:
-                index = links_obj.trimmed_chains[link][1].index(component_parent)
-                component_subchains.append(links_obj.trimmed_chains[link][1][index:])
-            links_obj.add_component_group(component_id, component_parent, component_links, component_subchains)
-
-    def add_component_group_classification(self, result_classif, keyword=""):
-        links_obj = self.get_links_object(keyword)
-        for component_id, component_type in result_classif.items():
-            links_obj.add_component_classif(component_id, component_type)
-            
-    def create_component_groups(self, keyword ="", verbose = False):
-        # Create Component group
-        links_obj = self.get_links_object(keyword)
-        links_obj.create_component_group(verbose)
-        print("--Created", len(links_obj.temp_components), keyword + " components")
-        # Verify Component group
-        validated_components, rejected_components = links_obj.verify_sensor_abstraction()
-        links_obj.valid_components = validated_components
-        for component in validated_components:
-            links_obj.valid_components[component.component_id] = component
-        print("--Validated", len(validated_components), keyword + " components")
-        print("--Rejected", len(rejected_components), keyword + " components") # need to be manually verified by an expert
         
-    def abstract_component(self, keyword = "", verbose = False) -> URDFTree:
-        print(f"Abstracting {keyword} components")
-        links_obj = self.get_links_object(keyword)
-        for valid_component in links_obj.valid_components:
-            # return the abstracted self.refined_urdf_tree
-            print("abstracting")
-        
+        self.sensor_groups = Dict[str, URDFTree]
+        self.end_effector_groups = Dict[str, URDFTree]
+        self.actuated_locomotion_groups = Dict[str, URDFTree]
+        self.actuated_bodypart_groups = Dict[str, URDFTree]
