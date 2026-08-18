@@ -10,10 +10,10 @@ class LinkIdentificationTask(VotingTask):
         
         self.json_format = f"""
 {{
-    "{self.keyword}":
-    [
-        {{"link_name": "string"}}
-    ]
+    "identifications":
+    {{
+        "{self.keyword}_0": {{"link_name": "string", "justification": "string"}}
+    }}
 }}
 """
         self.structured_format = {
@@ -46,18 +46,14 @@ class ComponentLinkIdentificationTask(LinkIdentificationTask):
     def system_prompt(self) -> str:
         simple_prompt = f"""
 You are an expert in robot kinematics and URDF-to-Ontology abstraction.
-Task: You will be provided with a list of links coming from an URDF model. Each link is this list is an URDF leaf link. 
-Identify all URDF leaf links that represent or belong to a {self.keyword} instance.
-
-Selection Criteria:
-1. Functional Origins: Links representing the point of {self.keyword} interaction.
-2. Internal Assemblies: Frames belonging to the internal structure of the {self.keyword}.
+Task: You will be provided with a list of leaf links coming from an URDF model. Identify all URDF leaf links that represent or belong to a {self.keyword} instance, as functional origins, internal assemblies or interaction frames. If identifying an end-effector, it has to be one that enables the robot to physically manipulate with its environment.
 
 Input Format: 
 List of URDF leaf links: ["leaf_1", "leaf_2", ...]
 
 Output Format:
 Respond strictly in JSON following this structure: {self.json_format}
+For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
 Do not include any extra text or markdown formatting.
 """
 
@@ -65,7 +61,7 @@ Do not include any extra text or markdown formatting.
         
     def user_prompt(self, user_input) -> str:
       
-        self.init_links = user_input["links"]  # store the initial links for verification purposes
+        self.init_links = user_input  # store the initial links for verification purposes
         links = json.dumps(self.init_links, indent=2)
         
         message = f"""
@@ -78,20 +74,25 @@ Input data:
     
     def interpret(self, output: dict) -> List[str]:
         results = []
-        sensors = output.get(self.keyword, [])
-
-        if not isinstance(sensors, list):
-            print(f"[ERROR] Expected JSON array for key '{self.keyword}', got {type(sensors)}")
+        
+        if not isinstance(output, dict):
             return results
 
-        for item in sensors:
-            if not isinstance(item, dict):
+        identifications = output.get("identifications", {})
+
+        if not isinstance(identifications, dict):
+            print(f"[ERROR] Expected JSON dictionary for key 'identifications', got {type(identifications)}")
+            return results
+
+        for id_key, entry_data in identifications.items():
+            if not isinstance(entry_data, dict):
                 continue
                 
-            link = item.get("link_name")
+            link = entry_data.get("link_name")
+            justification = entry_data.get("justification")
             
-            if link and link in self.init_links:
-                results.append(link)
+            if link and link in self.init_links.values():
+                results.append((link, justification))
             elif link:
                 print(f"[WARNING] Model guessed non-existent link: '{link}'")
 
@@ -102,7 +103,7 @@ Input data:
         vote_counter = Counter()
 
         for model_run_votes in votes:
-            for link in model_run_votes:
+            for link, justification in model_run_votes:
                 vote_counter[link] += 1
         
         majority_threshold = (len(votes) // 2) + 1
