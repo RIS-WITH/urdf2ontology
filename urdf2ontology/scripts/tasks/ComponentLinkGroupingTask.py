@@ -47,26 +47,47 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
         self.mode = mode
 
     def system_prompt(self) -> str:
+#         task_domain = "distinct functional groups" if self.keyword in ["body_part", "locomotion"] else "distinct physical device assemblies"
+        
+#         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
+
+# Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
+# As each of the clustered groups will be used to create a typed individual representing a single {self.keyword} unit, you should not merge target leaf links that do not contribute to the same {self.keyword} component.
+
+# Grouping Logic:
+# 1. One Group = One independent component assembly unit, consisting of one or several target elements corresponding to sub-frames of a single {self.keyword} component assembly.
+# 2. Conservatism Constraint: If structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
+# 3. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
+
+# Input Data Format:
+# {self.get_input_prompt(self.mode)}
+
+# Output Format:
+# Respond strictly in JSON following this structure: {self.json_format}
+# For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
+# Do not include any extra text or markdown formatting.
+# """
         task_domain = "distinct functional groups" if self.keyword in ["body_part", "locomotion"] else "distinct physical device assemblies"
         
         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
 
-Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
-As each of the clustered groups will be used to create a typed individual representing a single {self.keyword} unit, you should not merge target leaf links that do not contribute to the same {self.keyword} component.
+    Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
+    As each of the clustered groups will be used to create a typed individual representing a single {self.keyword} unit, you should not merge target leaf links that do not contribute to the same {self.keyword} component.
 
-Grouping Logic:
-1. One Group = One independent component assembly unit, consisting of one or several target elements corresponding to sub-frames of a single {self.keyword} component type.
-2. Conservatism Constraint: If structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
-3. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
+    Grouping Logic:
+    1. One Group = One independent component assembly unit. Elements that branch into parallel or sequential subchains MUST be merged into a SINGLE group if they originate from a shared parent node, mounting base, or common attachment root.
+    2. Divergent System Separation: Elements that originate from distinct, independent attachment roots or separate mounting bases must remain in separate groups, even if they share similar functions.
+    3. Conservatism Constraint: If structural connection, common mounting origin, or topological kinship is ambiguous, do NOT merge. Keep them in separate groups.
+    4. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
 
-Input Data Format:
-{self.get_input_prompt(self.mode)}
+    Input Data Format:
+    {self.get_input_prompt(self.mode)}
 
-Output Format:
-Respond strictly in JSON following this structure: {self.json_format}
-For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
-Do not include any extra text or markdown formatting.
-"""
+    Output Format:
+    Respond strictly in JSON following this structure: {self.json_format}
+    For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
+    Do not include any extra text or markdown formatting.
+    """
 
     def user_prompt(self, user_input: dict) -> str:
         self.initial_chains = {}
