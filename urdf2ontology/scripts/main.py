@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
-
+import time
 from urdf_tree import URDFTree
 from AbstractedRobotLinks import AbstractedRobotLinks
 from tasks.AbstractComponentPipeline import AbstractComponentPipeline
@@ -30,10 +30,11 @@ if __name__ == '__main__':
         ontology_handler.actions.fadd(ONTOLOGY_DIR + "/" + f)
     ontology_handler.close()
     
-    # Select the URDF models to be evaluated
-    eval_models = ['ingenuity.urdf', 'pepper.urdf','rbvogui_plus.urdf','pr2_standard.urdf', 'solo.urdf','iCub2_5.urdf']
+    # URDF models to be evaluated
+    eval_models = ['ingenuity.urdf', 'pepper.urdf','rbvogui_plus.urdf','pr2_standard.urdf', 'solo.urdf']
 
-    robot_path_string = EVAL_DIR + "/" + eval_models[0]
+    # Select the index of the model to abstract
+    robot_path_string = EVAL_DIR + "/" + eval_models[2]
     
     robot_name = robot_path_string.split('/')[-1].split('.')[0]
 
@@ -79,10 +80,15 @@ if __name__ == '__main__':
                                                                 save_intermediate = True, 
                                                                 load_intermediate = False)
     all_components.update(abstracted_robot.body_part_links.components)
-    print("Remaining leaves:", [link.name for link in result_urdf.leaf_links])
+
+    if(result_urdf != None and len(result_urdf.leaf_links) >= 1):
+        print("Remaining leaves:", [link.name for link in result_urdf.leaf_links])
      
     print("Populating Interconnected Components:")
     bodypart_pipeline.resolve_and_assert_component_hierarchy(all_components, robot_name)
+    
+    # Delay for ontologenius to process the latest modifications 
+    time.sleep(2)
     
     ontology_handler.actions.save(EVAL_DIR + "/abstracted_" + robot_name + ".owl")
         
