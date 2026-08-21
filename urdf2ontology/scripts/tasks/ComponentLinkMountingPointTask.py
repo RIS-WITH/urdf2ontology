@@ -21,31 +21,24 @@ class LinkMountingPointTask(VotingTask, URDFLinkTask):
 """
 
         self.structured_format = {
+    "type": "object",
+    "properties": {
+        "mounting_links": {
             "type": "object",
-            "properties": {
-                "mounting_links": {
-                    "type": "array",
-                    "description": "List containing each component target ID and its evaluated physical attachment root link.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "target_id": {
-                                "type": "string",
-                                "description": "The unique identifier of the target component."
-                            },
-                            "attachment_root": {
-                                "type": "string",
-                                "description": "The URDF link name representing the physical mounting boundary."
-                            }
-                        },
-                        "required": ["target_id", "attachment_root"],
-                        "additionalProperties": False
-                    }
-                }
-            },
-            "required": ["mounting_links"],
-            "additionalProperties": False
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "attachment_root": {"type": "string"},
+                    "justification": {"type": "string"}
+                },
+                "required": ["attachment_root", "justification"],
+                "additionalProperties": False
+            }
         }
+    },
+    "required": ["mounting_links"],
+    "additionalProperties": False
+}
         
     def ollama_json_schema(self):
         return self.structured_format

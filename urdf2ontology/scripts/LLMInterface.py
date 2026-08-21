@@ -66,7 +66,10 @@ class LLMInterface():
                 "generation_duration_sec": round(eval_sec, 4),
                 "total_duration_sec": round(prompt_eval_sec + eval_sec, 4),
                 "prompt_tokens": prompt_tokens,
-                "completion_tokens": eval_tokens
+                "completion_tokens": eval_tokens,
+                "task_prompt": task.system_prompt(),
+                "user_prompt": task.user_prompt(user_input),
+                "generation": response["response"]
             })
             
             if(verbose_thinking):

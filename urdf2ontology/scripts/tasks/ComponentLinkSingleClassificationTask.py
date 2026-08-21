@@ -67,35 +67,31 @@ class ComponentLinkSingleClassificationTask(LinkClassificationTask):
         return "".join(new_words)
              
     def system_prompt(self) -> str:
-        task_prompt = f""" 
-You are an expert in robot kinematics and URDF-to-Ontology abstraction.
-        
-Task: You will be provided with target {self.keyword} link chains along with their attachment roots and kinematic details. 
-Assign a functional sub-type to each {self.keyword} based on its role.
-Context: All target elements are confirmed children of the category: '{self.parent_context}'. 
+        return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
+
+Task: You will be provided with target {self.keyword} link chains along with their attachment roots, link names, and kinematic details. 
+Assign a functional sub-type to each {self.keyword} based ONLY on explicit, unambiguous evidence in the provided data.
+
+Context: All target elements are confirmed instances/children of the parent category: '{self.parent_context}'. 
 
 Allowed Types:
 {self.valid_types}
-"""
-        
-        instruction_prompt = f""" 
+
 Classification Rules:
-1. Role-Based Classification: Select the type that accurately reflects the kinematic chain's specific function.
-2. Structural Analysis: Use the relationship between the links and the attachment root to determine functional purpose.
-3. Constraint: Choose exactly ONE type from the allowed list.
-4. Convergence Fallback: Use the parent category '{self.parent_context}' if no sub-type is sufficiently supported by the evidence.
+1. Strict Grounding (No Over-Interpretation): Classify an entity into a specific sub-type ONLY if explicit naming or structural evidence strictly confirms it.
+   - For Sensors: Generic names do NOT necessarily provide enough evidence to infer sub-types. Use the broader concept or the parent fallback unless explicit modalities are in the data.
+   - For End-Effectors: Do not infer specific actuation types unless explicitly stated.
+   - For Locomotion: Do not infer specific propulsion mechanics unless explicit keywords or joint types confirm it.
+   - For Body Parts: Do not infer specialized skeletal roles unless explicitly named.
+2. Evidence-Based Selection: Select the type that accurately reflects the kinematic chain's functional purpose as supported directly by link names, joint types, or attachment contexts.
+3. Strict Fallback Rule: If the input data is ambiguous, generic, or lacks explicit subtype evidence, you MUST fall back to '{self.parent_context}' (or the most generic allowed matching parent concept). NEVER invent, assume, or extrapolate details not present in the input.
+4. Constraint: Choose exactly ONE type from the allowed list.
 5. Key Continuity: You MUST use the exact target ID key provided in the input JSON for each entry in 'classifications'.
-"""
-        
-        input_prompt = self.get_input_prompt(self.mode)
-         
-        output_prompt = f"""
+
 Output Format:
 Respond strictly in JSON following this structure: {self.json_format}
 For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
-Do not include any extra text or markdown formatting.
-"""
-        return "".join([task_prompt, instruction_prompt, input_prompt, output_prompt])
+Do not include any extra text or markdown formatting."""
         
     def user_prompt(self, user_input: dict) -> str:
         self.initial_chains = {}
@@ -105,8 +101,11 @@ Do not include any extra text or markdown formatting.
         for target_key, identified_comp in user_input.items():
             # Support both object attributes and dictionary keys
             link_chain = getattr(identified_comp, "link_chain", None) or identified_comp.get("link_chain", [])
-            attachment_root = getattr(identified_comp, "attachment_root", None) or identified_comp.get("attachment_root")
-            
+            #attachment_root = getattr(identified_comp, "attachment_root", None) or identified_comp.get("attachment_root")
+            if isinstance(identified_comp, dict):
+                attachment_root = identified_comp.get("attachment_root")
+            else:
+                attachment_root = getattr(identified_comp, "attachment_root", None)
             # Store primary target chain
             self.initial_chains[target_key] = link_chain
             
@@ -131,7 +130,7 @@ Do not include any extra text or markdown formatting.
             }
             
         chains = json.dumps(data_input, indent=2)
-        
+
         return f"""
 Below are the identified target {self.keyword} components with their associated kinematic subchain context:
 

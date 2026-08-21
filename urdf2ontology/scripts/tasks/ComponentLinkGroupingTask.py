@@ -21,20 +21,32 @@ class LinkGroupingTask(VotingTask, URDFLinkTask):
 }"""
         
         self.structured_format = {
+    "type": "object",
+    "properties": {
+        "groups": {
             "type": "object",
-            "properties": {
-                "groups": {
-                    "type": "object",
-                    "description": f"A dictionary mapping arbitrary tracking group IDs to arrays of physical target {self.keyword} leaf link strings.",
-                    "additionalProperties": {
+            "description": f"A dictionary mapping arbitrary tracking group IDs to group objects.",
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "links": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
+                        "description": "List of physical leaf link names."
+                    },
+                    "justification": {
+                        "type": "string",
+                        "description": "Reason for grouping these links together."
                     }
-                }
-            },
-            "required": ["groups"],
-            "additionalProperties": False
+                },
+                "required": ["links", "justification"],
+                "additionalProperties": False
+            }
         }
+    },
+    "required": ["groups"],
+    "additionalProperties": False
+}
         
     def ollama_json_schema(self) -> Dict[str, Any]:
         return self.structured_format
@@ -47,69 +59,30 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
         self.mode = mode
 
     def system_prompt(self) -> str:
-#         task_domain = "distinct functional groups" if self.keyword in ["body_part", "locomotion"] else "distinct physical device assemblies"
-        
-#         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
-
-# Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
-# As each of the clustered groups will be used to create a typed individual representing a single {self.keyword} unit, you should not merge target leaf links that do not contribute to the same {self.keyword} component.
-
-# Grouping Logic:
-# 1. One Group = One independent component assembly unit, consisting of one or several target elements corresponding to sub-frames of a single {self.keyword} component assembly.
-# 2. Conservatism Constraint: If structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
-# 3. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
-
-# Input Data Format:
-# {self.get_input_prompt(self.mode)}
-
-# Output Format:
-# Respond strictly in JSON following this structure: {self.json_format}
-# For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
-# Do not include any extra text or markdown formatting.
-# """
-    #     task_domain = "distinct functional groups" if self.keyword in ["body_part", "locomotion"] else "distinct physical device assemblies"
-        
-    #     return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
-
-    # Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains and attachment roots.
-    # As each of the clustered groups will be used to create a typed individual representing a single {self.keyword} unit, you should not merge target leaf links that do not contribute to the same {self.keyword} component.
-
-    # Grouping Logic:
-    # 1. One Group = One independent component assembly unit. Elements that branch into parallel or sequential subchains MUST be merged into a SINGLE group if they originate from a shared parent node, mounting base, or common attachment root.
-    # 2. Divergent System Separation: Elements that originate from distinct, independent attachment roots or separate mounting bases must remain in separate groups, even if they share similar functions.
-    # 3. Conservatism Constraint: If structural connection, common mounting origin, or topological kinship is ambiguous, do NOT merge. Keep them in separate groups.
-    # 4. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
-
-    # Input Data Format:
-    # {self.get_input_prompt(self.mode)}
-
-    # Output Format:
-    # Respond strictly in JSON following this structure: {self.json_format}
-    # For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
-    # Do not include any extra text or markdown formatting.
-    # """
-
         task_domain = "distinct functional groups" if self.keyword in ["body_part", "locomotion"] else "distinct physical device assemblies"
-        
+    
         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
 
-    Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains, attachment roots, and semantic device identities.
-    As each clustered group will be used to create a typed individual representing a single {self.keyword} unit, you must NOT merge target leaf links that represent distinct functional or physical devices, even if they share the same parent mounting frame.
+Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains, attachment roots, and semantic device identities.
+As each clustered group will be used to create a typed individual representing a single {self.keyword} unit, keep distinct physical devices separate, UNLESS they form a unified, coordinated functional system (such as a multi-wheel mobile base).
 
-    Grouping Logic:
-    1. Shared Device Assembly (Merge): Merge elements ONLY if they form parts/sub-frames of the same distinct device assembly (e.g., multi-sensor modules, optical/device frame pairs, or multi-branch mechanisms sharing a dedicated, immediate local mounting base).
-    2. Functional & Semantic Separation (Do NOT Merge): Distinct physical devices or distinct sensor modalities that happen to be attached to the same broad structural parent MUST remain in separate groups. A shared structural frame is a mounting point, NOT proof that the mounted devices are the same component assembly.
-    3. Conservatism Constraint: If structural connection, common immediate mounting origin, or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
-    4. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
+Grouping Logic:
+1. Shared Device Assembly (Merge): Merge elements if they form parts/sub-frames of the same distinct device assembly (e.g., multi-sensor modules, optical/device frame pairs, or multi-branch mechanisms sharing a dedicated, immediate local mounting base).
+2. Special Rule for Locomotion Systems:
+   - If keyword is 'locomotion', do NOT separate individual parts into isolated groups if they collectively form a single mobility unit.
+   - Merge all locomotion subchains sharing a common structural chassis into a single composite locomotion group representing the complete locomotion subsystem.
+3. Functional & Semantic Separation (Do NOT Merge Sensors/Body Parts): Distinct physical devices or distinct sensor modalities (e.g., separate cameras, independent manipulators) that happen to be attached to the same broad structural parent MUST remain in separate groups.
+4. Conservatism Constraint: For non-locomotion items, if structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
+5. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
 
-    Input Data Format:
-    {self.get_input_prompt(self.mode)}
+Input Data Format:
+{self.get_input_prompt(self.mode)}
 
-    Output Format:
-    Respond strictly in JSON following this structure: {self.json_format}
-    For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
-    Do not include any extra text or markdown formatting.
-    """
+Output Format:
+Respond strictly in JSON following this structure: {self.json_format}
+For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
+Do not include any extra text or markdown formatting.
+"""
     def user_prompt(self, user_input: dict) -> str:
         self.initial_chains = {}
         data_input = {}

@@ -173,37 +173,6 @@
      -->
 
     
-    <owl:Class rdf:about="http://example.org/robotics#RotorAssembly">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#PropulsionSubpart"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#Propeller">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#PropulsionSubpart"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#RotorBlade">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#PropulsionSubpart"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#LandingGear">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LocomotionSubpart"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#LandingLeg">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LandingGear"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#LandingSkid">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LandingGear"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#RotorArm">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#StructuralBaseSubpart"/>
-    </owl:Class>
-
-    <owl:Class rdf:about="http://example.org/robotics#GimbaMount">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#StructuralConnectorSubpart"/>
-    </owl:Class>
 
 
     <!-- http://example.org/component_ontology#AcousticSensorSubpart -->
@@ -517,18 +486,11 @@
     
 
 
-    <!-- http://example.org/robotics#AerialAndAquaticLocomotion -->
-
-    <owl:Class rdf:about="http://example.org/robotics#AerialAndAquaticLocomotion">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#Locomotion"/>
-    </owl:Class>
-    
-
-
     <!-- http://example.org/robotics#AerialLocomotion -->
 
     <owl:Class rdf:about="http://example.org/robotics#AerialLocomotion">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#Locomotion"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LocomotionSubpart"/>
     </owl:Class>
     
 
@@ -561,6 +523,14 @@
 
     <owl:Class rdf:about="http://example.org/robotics#AngularGripper">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#GrippingAndGraspingDevice"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#Arm -->
+
+    <owl:Class rdf:about="http://example.org/robotics#Arm">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
     
 
@@ -797,14 +767,6 @@
     
 
 
-    <!-- http://example.org/robotics#DriveSprocket -->
-
-    <owl:Class rdf:about="http://example.org/robotics#DriveSprocket">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#TrackSubpart"/>
-    </owl:Class>
-    
-
-
     <!-- http://example.org/robotics#ElectromagneticGripper -->
 
     <owl:Class rdf:about="http://example.org/robotics#ElectromagneticGripper">
@@ -939,6 +901,14 @@
     
 
 
+    <!-- http://example.org/robotics#GimbaMount -->
+
+    <owl:Class rdf:about="http://example.org/robotics#GimbaMount">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#StructuralConnectorSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://example.org/robotics#GraspCenterFrame -->
 
     <owl:Class rdf:about="http://example.org/robotics#GraspCenterFrame">
@@ -959,6 +929,14 @@
 
     <owl:Class rdf:about="http://example.org/robotics#GrippingAndGraspingDevice">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#EndEffector"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#Head -->
+
+    <owl:Class rdf:about="http://example.org/robotics#Head">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
     
 
@@ -1067,10 +1045,43 @@
     
 
 
+    <!-- http://example.org/robotics#LandingGear -->
+
+    <owl:Class rdf:about="http://example.org/robotics#LandingGear">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LocomotionSubpart"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#StructuralBaseSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#LandingLeg -->
+
+    <owl:Class rdf:about="http://example.org/robotics#LandingLeg">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LandingGear"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#LandingSkid -->
+
+    <owl:Class rdf:about="http://example.org/robotics#LandingSkid">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LandingGear"/>
+    </owl:Class>
+    
+
+
     <!-- http://example.org/robotics#LaserEmitterOrigin -->
 
     <owl:Class rdf:about="http://example.org/robotics#LaserEmitterOrigin">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#RangingSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#Leg -->
+
+    <owl:Class rdf:about="http://example.org/robotics#Leg">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
     </owl:Class>
     
 
@@ -1217,15 +1228,6 @@
     
 
 
-    <!-- http://example.org/robotics#MultirotorBase -->
-
-    <owl:Class rdf:about="http://example.org/robotics#MultirotorBase">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#AerialAndAquaticLocomotion"/>
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#AerialLocomotion"/>
-    </owl:Class>
-    
-
-
     <!-- http://example.org/robotics#OmniWheel -->
 
     <owl:Class rdf:about="http://example.org/robotics#OmniWheel">
@@ -1338,6 +1340,14 @@
     
 
 
+    <!-- http://example.org/robotics#Propeller -->
+
+    <owl:Class rdf:about="http://example.org/robotics#Propeller">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#PropulsionSubpart"/>
+    </owl:Class>
+    
+
+
     <!-- http://example.org/robotics#PropulsionSubpart -->
 
     <owl:Class rdf:about="http://example.org/robotics#PropulsionSubpart">
@@ -1413,6 +1423,32 @@
     <!-- http://example.org/robotics#Robot -->
 
     <owl:Class rdf:about="http://example.org/robotics#Robot"/>
+    
+
+
+    <!-- http://example.org/robotics#RotorArm -->
+
+    <owl:Class rdf:about="http://example.org/robotics#RotorArm">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#StructuralBaseSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#RotorAssembly -->
+
+    <owl:Class rdf:about="http://example.org/robotics#RotorAssembly">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#AerialLocomotion"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#PropulsionSubpart"/>
+    </owl:Class>
+    
+
+
+    <!-- http://example.org/robotics#RotorBlade -->
+
+    <owl:Class rdf:about="http://example.org/robotics#RotorBlade">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#AerialLocomotion"/>
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#PropulsionSubpart"/>
+    </owl:Class>
     
 
 
@@ -1674,34 +1710,18 @@
     
 
 
+    <!-- http://example.org/robotics#Torso -->
+
+    <owl:Class rdf:about="http://example.org/robotics#Torso">
+        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
+    </owl:Class>
+    
+
+
     <!-- http://example.org/robotics#TorsoAssembly -->
 
     <owl:Class rdf:about="http://example.org/robotics#TorsoAssembly">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#Torso"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#TrackRoller -->
-
-    <owl:Class rdf:about="http://example.org/robotics#TrackRoller">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#TrackSubpart"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#TrackSubpart -->
-
-    <owl:Class rdf:about="http://example.org/robotics#TrackSubpart">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#LocomotionSubpart"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#TrackTread -->
-
-    <owl:Class rdf:about="http://example.org/robotics#TrackTread">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#TrackSubpart"/>
     </owl:Class>
     
 
@@ -1726,14 +1746,6 @@
 
     <owl:Class rdf:about="http://example.org/robotics#UltrasonicSensor">
         <rdfs:subClassOf rdf:resource="http://example.org/robotics#RangingSensor"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#UnderwaterAUVBase -->
-
-    <owl:Class rdf:about="http://example.org/robotics#UnderwaterAUVBase">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#AerialAndAquaticLocomotion"/>
     </owl:Class>
     
 
@@ -1839,38 +1851,6 @@
     <!-- http://purl.org/ieee1872-owl/cora#RobotPart -->
 
     <owl:Class rdf:about="http://purl.org/ieee1872-owl/cora#RobotPart"/>
-    
-
-
-    <!-- http://example.org/robotics#Arm -->
-
-    <owl:Class rdf:about="http://example.org/robotics#Arm">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#Head -->
-
-    <owl:Class rdf:about="http://example.org/robotics#Head">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#Leg -->
-
-    <owl:Class rdf:about="http://example.org/robotics#Leg">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
-    </owl:Class>
-    
-
-
-    <!-- http://example.org/robotics#Torso -->
-
-    <owl:Class rdf:about="http://example.org/robotics#Torso">
-        <rdfs:subClassOf rdf:resource="http://example.org/robotics#BodyPart"/>
-    </owl:Class>
 </rdf:RDF>
 
 

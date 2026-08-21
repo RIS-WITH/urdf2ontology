@@ -17,20 +17,39 @@ class LinkClassificationTask(VotingTask, URDFLinkTask):
     }
 }"""
         self.structured_format = {
+    "type": "object",
+    "properties": {
+        "group_classifications": {
             "type": "object",
-            "properties": {
-                "groups": {
-                    "type": "object",
-                    "description": f"A dictionary mapping each evaluated {self.keyword} group ID directly to its composite category.",
-                    "additionalProperties": {
+            "description": f"A dictionary mapping each evaluated {self.keyword} group ID to its classification payload.",
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "link_chains": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "description": "List of link chains belonging to the group."
+                    },
+                    "type": {
                         "type": "string",
-                        "description": "The classified ontological subclass string matching the allowed types list."
+                        "description": "The classified ontological subclass matching the allowed types list."
+                    },
+                    "justification": {
+                        "type": "string",
+                        "description": "A single sentence explaining the classification."
                     }
-                }
-            },
-            "required": ["groups"],
-            "additionalProperties": False
+                },
+                "required": ["link_chains", "type", "justification"],
+                "additionalProperties": False
+            }
         }
+    },
+    "required": ["group_classifications"],
+    "additionalProperties": False
+}
         
     def ollama_json_schema(self) -> Dict[str, Any]:
         return self.structured_format
@@ -65,7 +84,7 @@ The component is represented as an aggregated group containing one or several su
 3. Kinematic Chain: The ordered physical path flowing sequentially from the attachment root to that specific leaf.
 
 Synthesis Logic:
-1. Holistic Identity: Infer the final component group type by aggregating and evaluating the collective roles of all internal sub-links.
+1. Holistic Identity: Infer the final component group type by aggregating and evaluating the collective roles of all internal sub-links and joints.
 2. Ontological Alignment: The selected type must be a logically valid specialization of '{self.parent_context}'.
 3. Convergence Fallback: If the internal branches do not provide clear, sufficient evidence for a specialized sub-type, retain the generic baseline parent category: '{self.parent_context}'.
 
