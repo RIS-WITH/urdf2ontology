@@ -4,7 +4,7 @@
   <name>urdf2ontology</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="bastien.dussard@gmail.com">bdussard</maintainer>
+  <maintainer email="firstname.surname@gmail.com">anonymous</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>ontologenius</depend>
