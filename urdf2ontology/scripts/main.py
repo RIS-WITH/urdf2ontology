@@ -17,9 +17,9 @@ if __name__ == '__main__':
     
     # DEFINES PATHS
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    EVAL_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "eval"))
+    EVAL_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "evaluation"))
     ONTOLOGY_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "ontology"))
-    URDF_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "urdf"))
+    URDF_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "urdf_models"))
         
     rclpy.init()
     ontology_handler = OntologyManipulator()
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     eval_models = ['ingenuity.urdf', 'pepper.urdf','rbvogui_plus.urdf','pr2_standard.urdf', 'solo.urdf']
 
     # Select the index of the model to abstract
-    robot_path_string = EVAL_DIR + "/" + eval_models[2]
+    robot_path_string = URDF_DIR + "/" + eval_models[0]
     
     robot_name = robot_path_string.split('/')[-1].split('.')[0]
 
