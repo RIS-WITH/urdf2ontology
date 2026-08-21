@@ -21,13 +21,17 @@ class AbstractComponentPipeline():
         self.keyword = keyword
         self.nb_runs = nb_runs
         self.ontology_handler = ontology_handler
-        self.llm_module = LLMInterface("gpt-oss:20b", 0.6) #"gpt-oss:20b", "magistral:24b", "qwen3.6:27b", "gemma3:27b"
+        self.llm_module = LLMInterface("gpt-oss:20b", 0.7) #"gpt-oss:20b", "qwen3:14b" (reasoning), "llama3.1:8b-instruct-q8_0" mistral-nemo:12b (non-reasoning)
         self.paths = paths
    
     # top-down
     def run_chain_pipeline(self, urdf_tree: URDFTree, robot_components: ComponentLinks, full_verbose: bool = False, save_intermediate: bool = False, load_intermediate: bool = False) :
         # Used for bodyparts abstraction
         robot_leaf_links = urdf_tree.get_leaf_links()
+        
+        if(len(robot_leaf_links) <= 1):
+            return
+                
         leaf_links_str = [leaf.name for leaf in robot_leaf_links]
         robot_leaf_links_dict = {'links': leaf_links_str}     
         
@@ -40,10 +44,9 @@ class AbstractComponentPipeline():
         else:
             print(f"<==== 1. IDENTIFICATION TASK ====>")
             print("Initial Link Input:", robot_leaf_links_dict.get('links'))
+            
             component_identif = ComponentLinkIdentificationTask(self.nb_runs*3, self.keyword)
-            # result_identif = self.llm_module.run_task(component_identif, robot_leaf_links_dict, verbose=full_verbose, verbose_thinking = False)
             result_identif = self.llm_module.run_batched_task(component_identif, user_input, batch_size=10, verbose=True)
-            print(f"Final Link identification task: {result_identif}")
             print(f"Final Link identification task: {result_identif}")
             
             robot_components.create_component_links(result_identif, "chain")
@@ -52,8 +55,6 @@ class AbstractComponentPipeline():
             component_mounting = ComponentLinkMountingPointTask(self.nb_runs*3, self.keyword, "kinematic_csv")
             result_mounting = self.llm_module.run_batched_task(component_mounting, robot_components.components, 
                                                                 batch_size = 5, verbose=full_verbose, verbose_thinking = False)
-            # version witout batching
-            # result_mounting = self.llm_module.run_task(component_mounting, robot_components.components, verbose=verbose, verbose_thinking = False)
             print(f"Final Link attachment root detection task: {result_mounting}") 
             robot_components.add_attachment_root_components(result_mounting)
                         
@@ -67,7 +68,7 @@ class AbstractComponentPipeline():
             robot_components.add_preclassification_components(chain_states)
             
             print(f"<==== 4. SEGMENTATION TASK ====>")
-            segmentation_task = SegmentIdentificationTask(self.nb_runs*3, self.keyword, "links")
+            segmentation_task = SegmentIdentificationTask(self.nb_runs*3, self.keyword, "kinematic_csv")
             segments_output = self.llm_module.run_task(segmentation_task, robot_components.components, verbose = True, verbose_thinking = False)
             print(segments_output)
             
@@ -75,19 +76,20 @@ class AbstractComponentPipeline():
             
             segments = robot_components.create_segments_chain_canonical(segments_output)
             
-            # print(segments)
-            for comp_id, component in robot_components.components.items():
-                if component.segments:
-                    # Extract segment IDs in kinematic order
-                    # full_list = []
-                    # for seg in component.segments:
-                    #     for link in seg.link_chain:
-                    #         full_list.append(link)
-                    segment_ids = [seg.id for seg in component.segments]
+            print(robot_components.components)
+            
+            # for comp_id, component in robot_components.components.items():
+            #     if component.segments:
+            #         # Extract segment IDs in kinematic order
+            #         # full_list = []
+            #         # for seg in component.segments:
+            #         #     for link in seg.link_chain:
+            #         #         full_list.append(link)
+            #         segment_ids = [seg.id for seg in component.segments]
                     
-                    # Format into sequential text
-                    sequence_str = " then ".join(segment_ids)
-                    print(f"{comp_id} is composed of {sequence_str}")
+            #         # Format into sequential text
+            #         sequence_str = " then ".join(segment_ids)
+            #         print(f"{comp_id} is composed of {sequence_str}")
                     
             flat_segments = {seg.id: seg for chain in robot_components.components.values() for seg in chain.segments}
             upper_concept = "BodyPartSubpart"
@@ -100,6 +102,8 @@ class AbstractComponentPipeline():
             print(f"Final Post-Classification Task: {segment_states}")
             
             robot_components.add_postclassification_segments(segment_states)
+            
+            print(robot_components.components)
                     
             # print(f"<==== 6. SEGMENT GROUPING TASK ====>")
             # component_grouping = ComponentLinkGroupingTask(self.nb_runs, self.keyword, "links")
@@ -107,14 +111,11 @@ class AbstractComponentPipeline():
             # print(f"Final Link grouping task: {result_grouping}")
             
             print(f"<==== 6. CHAIN GROUPING TASK ====>")
-            component_grouping = ChainLinkGroupingTask(self.nb_runs, self.keyword, "links")
+            component_grouping = ChainLinkGroupingTask(self.nb_runs*3, self.keyword, "links")
             result_grouping = self.llm_module.run_task(component_grouping, robot_components.components, verbose=True, verbose_thinking = False)
             print(f"Final Link grouping task: {result_grouping}")
             
             value = robot_components.build_macro_entities_dict(result_grouping)
-            print(value)
-            for elem in value:
-                print(elem)
                 
             #robot_components.create_grouped_components(result_grouping, self.keyword)
 
@@ -158,25 +159,28 @@ class AbstractComponentPipeline():
         self.init_urdf = urdf_tree
 
         robot_leaf_links = urdf_tree.get_leaf_links()
+        
+        if(len(robot_leaf_links) <= 1):
+            return
+        
         leaf_links_str = [leaf.name for leaf in robot_leaf_links]
         robot_leaf_links_dict = {'links': leaf_links_str}
         
         user_input = {f"link_{i}": link for i, link in enumerate(robot_leaf_links_dict["links"])}
                
         if(load_intermediate):
-            path = self.paths["main_path"]
+            path = self.paths["eval"]
             robot_components.merged_components = np.load(path + f"/{urdf_tree.robot_name}_tmp_{self.keyword}.npy", allow_pickle= True).item()
         else:
 
             print(f"<==== 1. IDENTIFICATION TASK ====>")
-            component_identif = ComponentLinkIdentificationTask(self.nb_runs*5, self.keyword)
+            component_identif = ComponentLinkIdentificationTask(self.nb_runs*3, self.keyword)
             result_identif = self.llm_module.run_batched_task(component_identif, user_input, batch_size=10, verbose=True)
             print(f"Final Link identification task: {result_identif}")
-
             robot_components.create_component_links(result_identif, "branch")
-                         
+            
             print(f"<==== 2. ATTACHMENT ROOT DETECTION TASK ====>")
-            component_mounting = ComponentLinkMountingPointTask(self.nb_runs*5, self.keyword, "kinematic_csv")
+            component_mounting = ComponentLinkMountingPointTask(self.nb_runs*3, self.keyword, "kinematic_csv")
             result_mounting = self.llm_module.run_batched_task(component_mounting, robot_components.components, 
                                                                batch_size = 5, verbose=verbose, verbose_thinking = False)
             print(f"Final Link attachment root detection task: {result_mounting}") 
@@ -189,31 +193,27 @@ class AbstractComponentPipeline():
             link_states = self.run_iterative_classification(pre_classification_task, init_link_states, robot_components.components, 
                                                             max_iterations = 3, verbose = verbose)
             print(f"Final Pre-Classification Task: {link_states}")
-            
             robot_components.add_preclassification_components(link_states)
         
             print(f"<==== 4. GROUPING TASK ====>")
-            component_grouping = ComponentLinkGroupingTask(self.nb_runs*5, self.keyword, "links")
+            component_grouping = ComponentLinkGroupingTask(self.nb_runs*3, self.keyword, "links")
             result_grouping = self.llm_module.run_task(component_grouping, robot_components.components, verbose=verbose, verbose_thinking = False)
             print(f"Final Link grouping task: {result_grouping}")
-            
             robot_components.create_grouped_components(result_grouping, self.keyword)
             
             print(f"<==== 5. POST-CLASSIFICATION TASK ====>")
             post_classification_task = ComponentLinkGroupClassificationTask(self.nb_runs, self.keyword, "links")
             upper_concept = post_classification_task.parent_context
             init_group_states = {gid: upper_concept for gid in robot_components.merged_components.keys()}
-            group_states = self.run_iterative_classification(post_classification_task, init_group_states, robot_components.merged_components, 
-                                                             max_iterations = 3, verbose = verbose)
+            group_states = self.run_iterative_classification(post_classification_task, init_group_states, 
+                                                             robot_components.merged_components, max_iterations = 3, verbose = verbose)
             print(f"Final Post-Classification Task: {group_states}")
-            
             robot_components.add_postclassification(group_states)
         
             print(f"<==== 6. LINK NAMING TASK ====>")
             component_link_naming = ComponentLinkNamingTask(self.nb_runs, self.keyword, "tree_component", "links")
             result_link_naming = self.llm_module.run_task(component_link_naming, robot_components.merged_components, verbose=True, verbose_thinking=False)
             print(f"Final Link Naming task: {result_link_naming}")
-            
             robot_components.assign_semantic_names(result_link_naming, "tree")
         
         if(save_intermediate):
@@ -226,11 +226,8 @@ class AbstractComponentPipeline():
         for comp in robot_components.merged_components.values():
             print(comp)
             
-        #self.populate_ontology_tree_groups(robot_components.merged_components, False)
-        #urdf_tree.abstract_components_tree_safe(robot_components.merged_components)
-        
         # 1. Populate Ontology 
-        orphan_links = self.populate_ontology_tree(urdf_tree=urdf_tree, final_trees=robot_components.merged_components)
+        orphan_links = self.populate_ontology_tree_new(urdf_tree=urdf_tree, final_trees=robot_components.merged_components)
 
         # 2. Purge URDF Tree Structure
         urdf_tree.purge_abstracted_components(final_trees=robot_components.merged_components, orphan_links=orphan_links)
@@ -467,7 +464,7 @@ class AbstractComponentPipeline():
                 self.ontology_handler.feeder.addInheritage(comp_name, chain_comp.type)
 
             if mount_name:
-                self.ontology_handler.feeder.addObjectRelation(comp_name, "mountsOn", mount_name)
+                self.ontology_handler.feeder.addDataRelation(comp_name, "mountsOn", "string", mount_name)
 
             if getattr(chain_comp, "assembly_base_link", None):
                 self.ontology_handler.feeder.addDataRelation(comp_name,"hasAssemblyLinkFrame", "string", chain_comp.assembly_base_link)
@@ -535,7 +532,7 @@ class AbstractComponentPipeline():
         )
         return all_orphan_nodes
         
-    def populate_ontology_tree(
+    def populate_ontology_tree_new(
         self, urdf_tree: Any, final_trees: Dict[str, Any]
     ) -> Set[str]:
         """
@@ -563,7 +560,7 @@ class AbstractComponentPipeline():
                 print("ASSERTION:", comp_name, "isA", tree_comp.type)
 
             if mount_name:
-                self.ontology_handler.feeder.addObjectRelation(comp_name, "mountsOn", mount_name)
+                self.ontology_handler.feeder.addDataRelation(comp_name, "mountsOn", "string", mount_name)
                 print("ASSERTION:", comp_name, "mountsOn", mount_name)
 
             if getattr(tree_comp, "assembly_base_link", None):
@@ -634,7 +631,7 @@ class AbstractComponentPipeline():
         self.ontology_handler.feeder.addConcept(link_name)
         self.ontology_handler.feeder.addInheritage(link_name, "OrphanLinkNode")
         self.ontology_handler.feeder.addObjectRelation(parent_comp_name, "hasOrphanNode", link_name)
-        self.ontology_handler.feeder.addDataRelation(link_name, "hasLinkFrame", link_name)
+        self.ontology_handler.feeder.addDataRelation(link_name, "hasLinkFrame", "string",  link_name)
 
         # 2. Track processed orphan link
         orphan_set.add(link_name)
@@ -651,21 +648,58 @@ class AbstractComponentPipeline():
                     orphan_set=orphan_set,
                 )
                 
+    def get_part_subproperty_from_ontology(self, comp_name: str) -> str:
+        """
+        Queries the ontology for the class hierarchy of the given individual 
+        and returns the corresponding subproperty of 'part'.
+        """
+        try:
+            # Retrieve all direct and indirect superclasses/types for the individual
+            instance_classes = self.ontology_handler.individuals.getUp(comp_name)
+        except Exception as e:
+            print(f"Warning: Failed to fetch class hierarchy for '{comp_name}': {e}")
+            instance_classes = []
+
+        # Flatten classes to lower-case string representations for checking
+        class_hierarchy = [str(cls).lower() for cls in instance_classes]
+
+        # Check hierarchy concepts against target upper-component types
+        if any("sensor" in cls for cls in class_hierarchy):
+            return "hasSensor"
+        elif any("endeffector" in cls or "effector" in cls for cls in class_hierarchy):
+            return "hasEndEffector"
+        elif any("locomotion" in cls for cls in class_hierarchy):
+            return "hasLocomotion"
+        elif any("bodypart" in cls or "body" in cls for cls in class_hierarchy):
+            return "hasBodyPart"
+
+        # Default fallback if no specific class matches
+        return "part"
+
     def resolve_and_assert_component_hierarchy(self, all_components: Dict[str, Any], robot_individual_name: str) -> None:
         """
         Final Post-Processing Pass:
-        Resolves inter-component hierarchy across all extracted steps and asserts
-        'hasSubSystem' relations (Parent Component -> hasSubSystem -> Child Component).
+        Resolves inter-component hierarchy across all extracted steps.
+        Asserts:
+        - Upper-level components -> (Robot Instance -> part -> Component)
+        - Sub-components -> (Parent Component -> hasSubSystem -> Child Component)
         """
-        # Resolve inter-component hierarchy in memory across all components
         resolved_components = self.resolve_component_hierarchy(all_components)
 
         robot_instance_name = robot_individual_name + "_robot"
         self.ontology_handler.feeder.addConcept(robot_instance_name)
+        print("Creating the main robot individual: ", robot_instance_name)
             
         relations_count = 0
         for comp_id, comp_data in resolved_components.items():
             is_dict = isinstance(comp_data, dict)
+
+            # Get current component semantic name or ID
+            comp_name = (
+                comp_data.get("semantic_name")
+                if is_dict
+                else getattr(comp_data, "semantic_name", None)
+            ) or comp_id
 
             # Retrieve parent component ID resolved by resolve_component_hierarchy
             parent_comp_id = (
@@ -674,13 +708,8 @@ class AbstractComponentPipeline():
                 else getattr(comp_data, "parent_component_id", None)
             )
 
+            # CASE 1: Child Component -> Has a valid parent component in the assembly
             if parent_comp_id and parent_comp_id in resolved_components:
-                child_name = (
-                    comp_data.get("semantic_name")
-                    if is_dict
-                    else getattr(comp_data, "semantic_name", None)
-                ) or comp_id
-
                 parent_data = resolved_components[parent_comp_id]
                 parent_name = (
                     (
@@ -692,14 +721,19 @@ class AbstractComponentPipeline():
                 )
 
                 # Assert Parent -> hasSubSystem -> Child
-                self.ontology_handler.feeder.addObjectRelation(parent_name, "hasSubSystem", child_name)
-                print("ASSERTION:", parent_name, "hasSubSystem", child_name)
-                self.ontology_handler.feeder.addObjectRelation(robot_instance_name, "part", parent_name)
-                print("ASSERTION:", robot_instance_name, "part", parent_name)
+                self.ontology_handler.feeder.addObjectRelation(parent_name, "hasSubSystem", comp_name)
+                print(f"ASSERTION: {parent_name} -> hasSubSystem -> {comp_name}")
+                relations_count += 1
+
+            # CASE 2: Top-Level / Upper Component -> Directly attached to the main robot chassis
+            else:
+                relation_pred = self.get_part_subproperty_from_ontology(comp_name)
+                self.ontology_handler.feeder.addObjectRelation(robot_instance_name, relation_pred, comp_name)
+                print(f"ASSERTION: {robot_instance_name} -> {relation_pred} -> {comp_name}")
                 relations_count += 1
 
         print(
-            f"\n[HIERARCHY RESOLVED] Asserted {relations_count} 'hasSubSystem' relations in ontology."
+            f"\n[HIERARCHY RESOLVED] Asserted {relations_count} hierarchy relations in ontology."
         )
 
     def resolve_component_hierarchy(self, all_components: Dict[str, Any]) -> Dict[str, Any]:
@@ -740,293 +774,3 @@ class AbstractComponentPipeline():
                     setattr(comp_data, "parent_component_id", None)
 
         return all_components
-    
-        
-    # def populate_hierarchical_ontology(self, all_components: Dict[str, Any] ) -> Set[str]:
-    #     """
-    #     Main entry point for populating the entire robot ontology.
-    #     Resolves inter-component hierarchy, dispatches to chain/tree population,
-    #     and wires component-to-component parent relations.
-    #     """
-    #     all_classified_links: Set[str] = set()
-
-    #     # Step 1: Wire component-to-component hierarchy in memory
-    #     resolved_components = self.resolve_component_hierarchy(all_components)
-
-    #     # Step 2: Track all classified links across all components
-    #     for comp in resolved_components.values():
-    #         links = comp.get("all_links", []) if isinstance(comp, dict) else getattr(comp, "all_links", [])
-    #         all_classified_links.update(links)
-
-    #     # Step 3: Populate internal ontology for each component
-    #     for comp_id, comp_data in resolved_components.items():
-            
-    #         # Determine if this component is a Tree or a Chain
-    #         has_branches = (
-    #             ("branches" in comp_data) if isinstance(comp_data, dict) 
-    #             else hasattr(comp_data, "branches")
-    #         )
-
-    #         if has_branches:
-    #             self.populate_tree_ontology(comp_id, comp_data)
-    #         else:
-    #             self.populate_chain_ontology(comp_id, comp_data)
-
-    #         # Step 4: Add INTER-COMPONENT hierarchy relation (attachedToComponent)
-    #         if isinstance(comp_data, dict):
-    #             comp_name = comp_data.get("semantic_name") or comp_id
-    #             parent_comp_id = comp_data.get("parent_component_id")
-    #         else:
-    #             comp_name = getattr(comp_data, "semantic_name", None) or comp_id
-    #             parent_comp_id = getattr(comp_data, "parent_component_id", None)
-
-    #         if parent_comp_id:
-    #             parent_data = resolved_components[parent_comp_id]
-    #             parent_name = (
-    #                 parent_data.get("semantic_name") or parent_comp_id
-    #                 if isinstance(parent_data, dict)
-    #                 else getattr(parent_data, "semantic_name", None) or parent_comp_id
-    #             )
-    #             # Asserts component-to-component link
-    #             self.ontology_handler.feeder.addObjectRelation(
-    #                 comp_name, "attachedToComponent", parent_name
-    #             )
-
-    #     return all_classified_links
-
-    # def populate_chain_ontology(self, gid: str, chain_comp: Any) -> None:
-    #     """
-    #     Populates ontology assertions for sequential kinematic chains and segment topology.
-    #     """
-    #     is_dict = isinstance(chain_comp, dict)
-        
-    #     comp_name = (chain_comp.get("semantic_name") if is_dict else getattr(chain_comp, "semantic_name", None)) or gid
-    #     mount_name = chain_comp.get("attachment_root") if is_dict else getattr(chain_comp, "attachment_root", None)
-    #     comp_type = (chain_comp.get("type") or chain_comp.get("macro_type")) if is_dict else (getattr(chain_comp, "type", None) or getattr(chain_comp, "macro_type", None))
-    #     assembly_base_link = chain_comp.get("assembly_base_link") if is_dict else getattr(chain_comp, "assembly_base_link", None)
-    #     component_links = list(chain_comp.get("all_links", [])) if is_dict else list(getattr(chain_comp, "all_links", []))
-
-    #     if not component_links:
-    #         return
-
-    #     # =====================================================================
-    #     # STEP 1: CHAIN COMPONENT CONCEPT & ROOT RELATIONS
-    #     # =====================================================================
-    #     if comp_name:
-    #         self.ontology_handler.feeder.addConcept(comp_name)
-
-    #     if comp_type:
-    #         self.ontology_handler.feeder.addInheritage(comp_name, comp_type)
-
-    #     if mount_name:
-    #         self.ontology_handler.feeder.addObjectRelation(comp_name, "mountsOn", mount_name)
-
-    #     if assembly_base_link:
-    #         self.ontology_handler.feeder.addDataRelation( comp_name, "hasAssemblyLinkFrame", "string", assembly_base_link )
-
-    #     # =====================================================================
-    #     # STEP 2: SEGMENTS & KINEMATIC CHAIN TOPOLOGY
-    #     # =====================================================================
-    #     segments = chain_comp.get("segments", []) if is_dict else getattr(chain_comp, "segments", [])
-    #     ordered_segment_items = []
-
-    #     if segments:
-    #         for seg in segments:
-    #             s_is_dict = isinstance(seg, dict)
-    #             seg_name = (
-    #                 (seg.get("semantic_name") or seg.get("id") or seg.get("link_name"))
-    #                 if s_is_dict
-    #                 else (getattr(seg, "semantic_name", None) or getattr(seg, "id", None) or getattr(seg, "link_name", None))
-    #             )
-    #             seg_type = seg.get("type", "ChainSegment") if s_is_dict else getattr(seg, "type", "ChainSegment")
-    #             link_frame = seg.get("link_name", seg_name) if s_is_dict else getattr(seg, "link_name", seg_name)
-    #             ordered_segment_items.append((seg_name, seg_type, link_frame))
-    #     else:
-    #         # Fallback to component_links order if explicit segment objects aren't present
-    #         for link_name in component_links:
-    #             ordered_segment_items.append((link_name, "ChainSegment", link_name))
-
-    #     # 1. Create individual concept & link frame for each segment
-    #     for seg_name, seg_type, link_frame in ordered_segment_items:
-    #         self.ontology_handler.feeder.addConcept(seg_name)
-    #         self.ontology_handler.feeder.addInheritage(seg_name, seg_type)
-    #         self.ontology_handler.feeder.addDataRelation(seg_name, "hasLinkFrame", "string", link_frame)
-
-    #     # 2. Wire sequential chain properties in the ontology
-    #     if ordered_segment_items:
-    #         first_seg_name = ordered_segment_items[0][0]
-    #         last_seg_name = ordered_segment_items[-1][0]
-
-    #         # Component -> hasInitialSegment -> First Segment
-    #         self.ontology_handler.feeder.addObjectRelation(comp_name, "hasInitialSegment", first_seg_name
-    #         )
-
-    #         # Segment_i -> hasNextSegment -> Segment_{i+1}
-    #         for i in range(len(ordered_segment_items) - 1):
-    #             curr_seg_name = ordered_segment_items[i][0]
-    #             next_seg_name = ordered_segment_items[i + 1][0]
-    #             self.ontology_handler.feeder.addObjectRelation(curr_seg_name, "hasNextSegment", next_seg_name)
-
-    #         # Component -> hasTerminalSegment -> Last Segment
-    #         self.ontology_handler.feeder.addObjectRelation( comp_name, "hasTerminalSegment", last_seg_name)
-
-    # def populate_tree_ontology(self, gid: str, tree_comp: Any) -> None:
-        """
-        Populates ontology assertions for tree assemblies and sub-branches.
-        """
-        is_dict = isinstance(tree_comp, dict)
-
-        comp_name = (tree_comp.get("semantic_name") if is_dict else getattr(tree_comp, "semantic_name", None)) or gid
-        mount_name = tree_comp.get("attachment_root") if is_dict else getattr(tree_comp, "attachment_root", None)
-        comp_type = (tree_comp.get("type") or tree_comp.get("macro_type")) if is_dict else (getattr(tree_comp, "type", None) or getattr(tree_comp, "macro_type", None))
-        assembly_base_link = tree_comp.get("assembly_base_link") if is_dict else getattr(tree_comp, "assembly_base_link", None)
-
-        # =====================================================================
-        # STEP 1: TREE COMPONENT CONCEPT & ROOT RELATIONS
-        # =====================================================================
-        if comp_name:
-            self.ontology_handler.feeder.addConcept(comp_name)
-
-        if comp_type:
-            self.ontology_handler.feeder.addInheritage(comp_name, comp_type)
-
-        if mount_name:
-            self.ontology_handler.feeder.addObjectRelation(comp_name, "mountsOn", mount_name)
-
-        if assembly_base_link:
-            self.ontology_handler.feeder.addDataRelation(comp_name, "hasAssemblyLinkFrame", "string", assembly_base_link)
-
-        # =====================================================================
-        # STEP 2: SUB-BRANCHES & TREE TOPOLOGY
-        # =====================================================================
-        branches = tree_comp.get("branches", []) if is_dict else getattr(tree_comp, "branches", [])
-
-        # Check for single-branch single-link edge case
-        first_branch_chain = (
-            (branches[0].get("link_chain", []) if isinstance(branches[0], dict) else getattr(branches[0], "link_chain", []))
-            if branches else []
-        )
-        if len(branches) == 1 and len(first_branch_chain) == 1:
-            print(f"[SKIP SUB-PARTS] Single-branch tree component: {comp_name}")
-        else:
-            for sub_comp in branches:
-                b_is_dict = isinstance(sub_comp, dict)
-                
-                sub_comp_name = (
-                    (sub_comp.get("semantic_name") or sub_comp.get("id"))
-                    if b_is_dict
-                    else (getattr(sub_comp, "semantic_name", None) or getattr(sub_comp, "id", "sub_part"))
-                ) or "sub_part"
-
-                sub_comp_type = sub_comp.get("type", "Subpart") if b_is_dict else getattr(sub_comp, "type", "Subpart")
-                link_chain = sub_comp.get("link_chain", []) if b_is_dict else getattr(sub_comp, "link_chain", [])
-
-                self.ontology_handler.feeder.addConcept(sub_comp_name)
-                self.ontology_handler.feeder.addInheritage(sub_comp_name, sub_comp_type)
-                self.ontology_handler.feeder.addObjectRelation(comp_name, "hasSubPart", sub_comp_name)
-
-                for link in link_chain:
-                    self.ontology_handler.feeder.addDataRelation(sub_comp_name, "hasLinkFrame", "string", link)
-        
-    # def populate_hierarchical_ontology(self, urdf_tree: Any, all_components: Dict[str, Any]) -> Dict[str, Any]:
-    #     """
-    #     Orchestrates full ontology population: resolves component hierarchy, dispatches
-    #     tree/chain population, and links parent-child relationships.
-    #     """
-    #     # Step 1: Wire inter-component parent/child IDs
-    #     resolved_components = self.resolve_component_hierarchy(all_components)
-
-    #     # Step 2: Populate each component's internal structure and inter-component relations
-    #     for comp_id, comp_data in resolved_components.items():
-            
-    #         # --- A. Dispatch based on component structural type ---
-    #         has_branches = (
-    #             ("branches" in comp_data) if isinstance(comp_data, dict) 
-    #             else hasattr(comp_data, "branches")
-    #         )
-            
-    #         if has_branches:
-    #             self.populate_tree_ontology(comp_data)
-    #         else:
-    #             self.populate_chain_ontology(comp_data)
-
-    #         # --- B. Add top-level hierarchy & mounting relations ---
-    #         if isinstance(comp_data, dict):
-    #             comp_name = comp_data.get("semantic_name") or comp_id
-    #             parent_comp_id = comp_data.get("parent_component_id")
-    #             mount_link = comp_data.get("mount_link") or comp_data.get("attachment_root")
-    #         else:
-    #             comp_name = getattr(comp_data, "semantic_name", None) or comp_id
-    #             parent_comp_id = getattr(comp_data, "parent_component_id", None)
-    #             mount_link = getattr(comp_data, "mount_link", None) or getattr(comp_data, "attachment_root", None)
-
-    #         # Link to parent component
-    #         if parent_comp_id:
-    #             parent_data = resolved_components[parent_comp_id]
-    #             parent_name = (
-    #                 parent_data.get("semantic_name") or parent_comp_id
-    #                 if isinstance(parent_data, dict)
-    #                 else getattr(parent_data, "semantic_name", None) or parent_comp_id
-    #             )
-    #             self.ontology_handler.feeder.addObjectRelation(comp_name, "attachedToComponent", parent_name)
-
-    #         # Link to physical URDF frame
-    #         if mount_link:
-    #             self.ontology_handler.feeder.addObjectRelation(comp_name, "mountsOnLinkFrame", mount_link)
-
-    #     return resolved_components
-
-    # def populate_tree_ontology(self, comp_data: Any) -> None:
-    #     """
-    #     Populates internal ontology triples for Tree components and their branches.
-    #     """
-    #     is_dict = isinstance(comp_data, dict)
-    #     comp_id = comp_data.get("entity_id") if is_dict else getattr(comp_data, "entity_id", None)
-    #     macro_type = comp_data.get("macro_type") if is_dict else getattr(comp_data, "macro_type", None)
-    #     branches = comp_data.get("branches", []) if is_dict else getattr(comp_data, "branches", [])
-
-    #     # 1. Create top-level Tree Component Individual
-    #     self.ontology_handler.feeder.addConcept(comp_id)
-    #     self.ontology_handler.feeder.addInheritage(comp_id, macro_type)
-
-    #     # 2. Add Branch Sub-elements
-    #     for branch in branches:
-    #         b_is_dict = isinstance(branch, dict)
-    #         branch_id = branch.get("id") if b_is_dict else getattr(branch, "id", None)
-    #         branch_type = branch.get("type") if b_is_dict else getattr(branch, "type", None)
-    #         link_chain = branch.get("link_chain", []) if b_is_dict else getattr(branch, "link_chain", [])
-
-    #         full_branch_id = f"{comp_id}_{branch_id}"
-    #         self.ontology_handler.feeder.addConcept(full_branch_id)
-    #         self.ontology_handler.feeder.addInheritage(full_branch_id, branch_type)
-    #         self.ontology_handler.feeder.addObjectRelation(comp_id, "hasSubPart", full_branch_id)
-
-    #         for link in link_chain:
-    #             self.ontology_handler.feeder.addObjectRelation(full_branch_id, "containsLinkFrame", link)
-
-    # def populate_chain_ontology(self, comp_data: Any) -> None:
-        """
-        Populates internal ontology triples for Chain components and their segments.
-        """
-        is_dict = isinstance(comp_data, dict)
-        comp_id = comp_data.get("entity_id") if is_dict else getattr(comp_data, "entity_id", None)
-        macro_type = comp_data.get("macro_type") if is_dict else getattr(comp_data, "macro_type", None)
-        segments = comp_data.get("segments", []) if is_dict else getattr(comp_data, "segments", [])
-
-        # 1. Create top-level Chain Component Individual
-        self.ontology_handler.feeder.addIndividual(comp_id, macro_type)
-
-        # 2. Add Segment Sub-elements
-        for segment in segments:
-            s_is_dict = isinstance(segment, dict)
-            seg_id = segment.get("id") if s_is_dict else getattr(segment, "id", None)
-            seg_type = segment.get("type") if s_is_dict else getattr(segment, "type", None)
-            link_chain = segment.get("link_chain", []) if s_is_dict else getattr(segment, "link_chain", [])
-
-            full_seg_id = f"{comp_id}_{seg_id}"
-            self.ontology_handler.feeder.addConcept(full_seg_id)
-            self.ontology_handler.feeder.addInheritage(full_seg_id, seg_type)
-            self.ontology_handler.feeder.addObjectRelation(comp_id, "hasSegment", full_seg_id)
-
-            for link in link_chain:
-                self.ontology_handler.feeder.addObjectRelation(full_seg_id, "containsLinkFrame", link)
