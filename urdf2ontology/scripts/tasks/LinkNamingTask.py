@@ -83,7 +83,7 @@ STRICT ID RULES:
 NAMING CONVENTIONS:
 1. Namespace Consistency: Use strict snake_case format exclusively (lowercase letters, numbers, underscores).
 2. Minimal & Clean: Remove raw URDF boilerplate, location prefixes, or mounting joint labels if functional meaning is preserved (e.g., use 'right_shoulder' instead of 'right_upper_shoulder_mount_link').
-3. Unique Names: Every generated macro name and sub-component name within a component must be distinct and semantically meaningful.
+3. Unique Names: Every generated macro name and sub-component name must be distinct and semantically meaningful.
 
 Output Format:
 Respond strictly in JSON following this exact structure:
