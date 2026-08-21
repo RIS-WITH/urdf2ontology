@@ -26,6 +26,13 @@ class VotingTask(ABC):
         Build the user prompt for this task.
         """
         pass
+    
+    @property
+    def ollama_json_schema(self) -> str:
+        """
+        Build the user prompt for this task.
+        """
+        pass
 
     @abstractmethod
     def interpret(self, output: dict) -> Any:
