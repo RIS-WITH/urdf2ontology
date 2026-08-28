@@ -52,29 +52,26 @@ class ComponentLinkMountingPointTask(LinkMountingPointTask):
                             
     def system_prompt(self) -> str:
         keyword_rules = {
-            "body_part": (
-                "1. The Proximal Anchor: Identify the highest-level structural link at the base of the chain connecting the limb to the core component, that does not belong to that limb.\n"
-                "2. The Divergence Hub: In symmetric limbs, locate the common structural frame where those two tracks split apart."
-            ),
-            "sensor": (
-                "1. The Bracket Interface Rule: Locate the structural link fastening the sensor to the main robot morphology.\n"
-                "2. The Chassis Host Rule: Identify the underlying non-sensor structural link that acts as the physical host for the sensor assembly."
-            ),
-            "end_effector": (
-                "1. The Tool Changer Rule: Identify the tool adapter bolted to the robot's final moving actuator joint.\n"
-                "2. The Tool-Plate Parent Rule: Identify the terminal link of the limb that remains unchanged regardless of what tool is swapped in."
-            ),
-            "locomotion": (
-                "1. The Propulsion Interface Rule: Identify the structural hub, motor housing adapter, or mounting bulkhead that fastens the propulsion mechanism to the main core hull or chassis.\n"
-                "2. The Foundation Host Rule: Identify the primary structural body link that acts as the physical host and power/structural carrier for that specific locomotion track."
-            )
-        }
+    "body_part": (
+        "1. External Parent Exclusion: Select the link directly superior to the limb's root joint that is strictly OUTSIDE the limb assembly.\n"
+        "2. Inclusion of Base Links: Ensure structural housings belong INSIDE the limb's sub-chain; do not select them as the root."
+    ),
+    "sensor": (
+        "1. External Host Rule: Select the non-sensor structural link that the sensor package attaches to.\n"
+        "2. Include Mounting Hardware: The physical sensor bracket, housing, or adapter plate must remain INSIDE the sensor component sub-tree; the attachment root must be the parent link connected to the robot body above that bracket."
+    ),
+    "end_effector": (
+        "1. Flange Boundary Rule: Select the terminal link of the manipulator arm as the external attachment root.\n"
+        "2. Adapter Inclusion: Any tool adapter, base plate, or gripper housing must be grouped INSIDE the end-effector component."
+    ),
+    "locomotion": (
+        "1. Chassis Isolation Rule: Select the central body or chassis link superior to the propulsion/locomotion assembly as the attachment root.\n"
+        "2. Suspension & Mount Inclusion: All suspension arms, steering knuckles, and motor mount housings must be grouped INSIDE the locomotion component sub-tree, NOT chosen as the root."
+        "2. Propulsion & Articulation Inclusion: All intermediate structural mounts and functional sub-components must be grouped INSIDE the locomotion component sub-tree, NOT chosen as the attachment root."
+    )
+}
+        specific_instruction = keyword_rules.get(self.keyword, "1. Identify the structural interface frame joining this subsystem to the primary core.")
 
-        specific_instruction = keyword_rules.get(
-            self.keyword, 
-            "1. Identify the structural interface frame joining this subsystem to the primary core."
-        )
-            
         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
  
 Task: Identify the single "Attachment Root" link for the {self.keyword} components provided in the input data.
@@ -83,13 +80,19 @@ Input Data Layout:
 Each item in the input data represents a targeted component accompanied by its full kinematic chain sequence, ordered sequentially from the robot's primary root link (index 0) down to the functional leaf link (last index).
 
 Definition:
-The Attachment Root is the physical mounting interface working as a structural boundary between the associated {self.keyword} component assembly and the main structural morphology of the robot.
+The Attachment Root is the host link on the main structural morphology of the robot to which the entire {self.keyword} component assembly attaches. 
+
+Strict Rules for Selection:
+1. It MUST be a link belonging to the main body/structure of the robot that remains after removing the {self.keyword}.
+2. It CANNOT be any link internal to the {self.keyword} assembly itself (including its own mounting plate, housing, or leaf links).
+3. Think of it as the "parent node" in the URDF tree where you would unbolt or detach the entire {self.keyword} module from the robot.
 
 Strict Boundary Elimination Rules:
 {specific_instruction}
-3. The "Unscrew" Test: If you physically unbolted or detached this entire functional {self.keyword} assembly from the robot, which structural link remains intact on the main body? That link is your Attachment Root.
+3. The "Unscrew" Test: If you physically unbolted or detached this entire functional {self.keyword} assembly (including its brackets and housings) from the robot, which structural link remains intact on the main body? That link is your Attachment Root.
 4. The Assembly Housing Exclusion: The Attachment Root MUST NOT be an internal sub-frame that is functionally part of the component assembly itself, or the last link before the core robot structure still belonging to that {self.keyword} component. 
 5. Traversal Direction & Chassis Edge-Case: Do not fall into lexical naming traps. Trace leftward (towards index 0) until you exit the component's internal tree.
+6. Primary Root Fallback: If the component is mounted directly to the robot's primary root (index 0), then index 0 itself is the Attachment Root.
 
 Input Data Format:
 {self.get_input_prompt(self.mode)}
@@ -99,6 +102,7 @@ Respond strictly in JSON following this structure: {self.json_format}
 For each justification attribute, provide a single, self-sufficient, clear sentence explaining the reason for your choice.
 Do not include any extra text or markdown formatting.
 """
+
 
     def user_prompt(self, user_input: dict) -> str:
 
