@@ -2,9 +2,10 @@ from tasks.VotingTask import VotingTask
 from tasks.URDFLinkTask import URDFLinkTask
 
 from itertools import combinations
-from collections import defaultdict
-from typing import List, Dict, Any, Set
+from collections import defaultdict, Counter
+from typing import List, Dict, Any, Set, Tuple
 import json
+
 
 class LinkGroupingTask(VotingTask, URDFLinkTask):
     def __init__(self, nb_runs, keyword):
@@ -15,7 +16,7 @@ class LinkGroupingTask(VotingTask, URDFLinkTask):
     "groups": {
         "group_0": {
             "links": ["leaf_link_a", "leaf_link_b"],
-            "justification": string
+            "justification": "Clear single-sentence justification explaining why these links form a physical/functional group."
             }
     }
 }"""
@@ -63,16 +64,14 @@ class ComponentLinkGroupingTask(LinkGroupingTask):
     
         return f"""You are an expert in robot kinematics and URDF-to-Ontology abstraction.
 
-Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains, attachment roots, and semantic device identities.
-As each clustered group will be used to create a typed individual representing a single {self.keyword} unit, keep distinct physical devices separate, UNLESS they form a unified, coordinated functional system (such as a multi-wheel mobile base).
+Task: Cluster the provided target leaf {self.keyword} links into {task_domain} based on their kinematic subchains, attachment roots, and semantic device identities. As each clustered group will be used to create a typed individual representing a single {self.keyword} unit, keep distinct physical devices separate, UNLESS they form a unified, coordinated functional system.
 
 Grouping Logic:
-1. Shared Device Assembly (Merge): Merge elements if they form parts/sub-frames of the same distinct device assembly (e.g., multi-sensor modules, optical/device frame pairs, or multi-branch mechanisms sharing a dedicated, immediate local mounting base).
-2. Special Rule for Locomotion Systems:
-   - If keyword is 'locomotion', do NOT separate individual parts into isolated groups if they collectively form a single mobility unit.
-   - Merge all locomotion subchains sharing a common structural chassis into a single composite locomotion group representing the complete locomotion subsystem.
-3. Functional & Semantic Separation (Do NOT Merge Sensors/Body Parts): Distinct physical devices or distinct sensor modalities (e.g., separate cameras, independent manipulators) that happen to be attached to the same broad structural parent MUST remain in separate groups.
-4. Conservatism Constraint: For non-locomotion items, if structural connection or functional kinship is ambiguous, do NOT merge. Keep them in separate groups.
+1. Shared Device Assembly (Merge): 
+    - Merge elements if they form parts, sub-components, or reference frames of the same distinct device assembly.
+2. Special Rule for Locomotion Systems: If keyword is 'locomotion', do NOT separate individual parts into isolated groups if they collectively form a single mobility modality.
+3. Functional & Semantic Separation: Separate, distinct physical hardware devices MUST remain in separate groups, even if attached to the same structural parent.
+4. Conservatism Constraint: Do NOT merge two completely separate physical devices together. However, sub-frames, optical frames, and reference links belonging to the same physical unit MUST be merged with that unit.
 5. Absolute Requirement: Every single target element provided in the input must be assigned to exactly one group inside your response.
 
 Input Data Format:
@@ -84,18 +83,28 @@ For each justification attribute, provide a single, self-sufficient, clear sente
 Do not include any extra text or markdown formatting.
 """
     def user_prompt(self, user_input: dict) -> str:
-        self.initial_chains = {}
-        data_input = {}
+        # self.initial_chains = {}
+        # data_input = {}
         
-        for link, identified_comp in user_input.items():
-            self.initial_chains[link] = identified_comp.link_chain # Store only the base link_chain for verification passes
-            data_input[link] = {
-                "semantic_type": identified_comp.type, 
-                "attachment_root": identified_comp.attachment_root, 
-                "kinematic_chain": identified_comp.get_kinematic_chain(self.mode)
-            }
+        # for link, identified_comp in user_input.items():
+        #     self.initial_chains[link] = identified_comp.link_chain # Store only the base link_chain for verification passes
+        #     data_input[link] = {
+        #         "semantic_type": identified_comp.type, 
+        #         "attachment_root": identified_comp.attachment_root, 
+        #         "kinematic_chain": identified_comp.get_kinematic_chain(self.mode)
+        #     }
          
-        chains = json.dumps(data_input, indent=2)
+        compact_data = {}
+        for link, identified_comp in user_input.items():
+            self.initial_chains[link] = identified_comp.link_chain
+            
+            compact_data[link] = {
+                "type": identified_comp.type,
+                "root": identified_comp.attachment_root,
+                "chain": " -> ".join(identified_comp.get_kinematic_chain(self.mode)) # arrow-separated string instead of a long array
+            }
+
+        chains = json.dumps(compact_data, indent=2)
          
         new_message = f"""
 Below are the identified target {self.keyword} elements requiring grouping evaluation:
@@ -120,21 +129,96 @@ Input data: {chains}"""
                 continue
 
             grouped_links = group_data.get("links", [])
-            justification = group_data.get("justification", "")
-
             if not isinstance(grouped_links, list) or len(grouped_links) == 0:
                 continue
             
-            if all(link in self.initial_chains for link in grouped_links):
-                valid_results.append(list(grouped_links))
-            else:
-                invalid_nodes = [l for l in grouped_links if l not in self.initial_chains]
-                print(f"[CLUSTER ERROR] Dropping group '{group_id}' due to out-of-bounds target elements: {invalid_nodes}")
+            # Keep valid target elements; strip out hallucinated ones
+            valid_links = [l for l in grouped_links if l in self.initial_chains]
+            invalid_nodes = [l for l in grouped_links if l not in self.initial_chains]
+
+            if invalid_nodes:
+                print(f"[CLUSTER WARNING] Stripped out-of-bounds elements {invalid_nodes} from group '{group_id}'")
+
+            # Keep the group as long as at least one valid link remains
+            if valid_links:
+                valid_results.append(valid_links)
 
         print(f"Interpreted {len(valid_results)} validated constituent group allocations.")
         return valid_results
     
-    def aggregate(self, generations: List[List[List[str]]]) -> List[List[str]]:
+    # Iterative Frequent-set Extraction
+    def aggregate(self, generations: List[List[List[str]]], min_votes: int = 2) -> List[List[str]]:
+        """
+        Extracts high-frequency exact groups and flushes their constituent 
+        links from remaining runs to guarantee valid non-overlapping groups.
+        
+        :param generations: List of outputs from valid runs (each run is a list of link groups).
+        :param min_votes: Minimum occurrences required across runs to accept a group (default: 2).
+        """
+        if not generations:
+            return []
+
+        # Track every link encountered to ensure 100% target coverage at the end
+        all_target_links: Set[str] = set()
+        for gen in generations:
+            for group in gen:
+                all_target_links.update(group)
+
+        # Convert each run's groups into list of frozensets for easy set operations
+        runs_groups: List[List[Tuple[str, ...]]] = []
+        for gen in generations:
+            run_sets = [tuple(sorted(group)) for group in gen if len(group) > 1]
+            runs_groups.append(run_sets)
+
+        # Step 1: Count occurrences of exact multi-element groups across all runs
+        group_counts = Counter()
+        for run in runs_groups:
+            # Using set(run) per generation so a single run doesn't artificially inflate count
+            for group in set(run):
+                group_counts[group] += 1
+
+        # Step 2: Sort candidates by (1) Frequency descending, (2) Group Size descending
+        # sorted_candidates = sorted(
+        #     group_counts.items(),
+        #     key=lambda item: (item[1], len(item[0])),
+        #     reverse=True
+        # )
+        
+        # Sort by: 1. Frequency (Descending), 2. Group Size (Ascending)
+        sorted_candidates = sorted(
+            group_counts.items(),
+            key=lambda item: (item[1], -len(item[0])),
+            reverse=True
+        )
+
+        final_validated_groups: List[List[str]] = []
+        claimed_links: Set[str] = set()
+
+        # Step 3: Greedily select top groups and flush their links
+        for group_tuple, count in sorted_candidates:
+            if count < min_votes:
+                break  # Candidates are sorted by frequency, so we can stop early
+
+            group_set = set(group_tuple)
+
+            # Skip if ANY link in this candidate group has already been claimed by a higher-voted group
+            if group_set.intersection(claimed_links):
+                continue
+
+            # Accept group and flush its links
+            final_validated_groups.append(sorted(list(group_set)))
+            claimed_links.update(group_set)
+
+        # Step 4: Cleanup / Fallback for any links not in a multi-element group
+        unclaimed_links = all_target_links - claimed_links
+        for single_link in sorted(unclaimed_links):
+            final_validated_groups.append([single_link])
+
+        print(f"Validated {len(final_validated_groups)} finalized {self.keyword} physical groups.")
+        return final_validated_groups
+
+    # Pairwise Graph Consensus
+    # def aggregate(self, generations: List[List[List[str]]]) -> List[List[str]]:
         pair_counts = defaultdict(int)
         all_links: Set[str] = set()
         num_generations = len(generations)
