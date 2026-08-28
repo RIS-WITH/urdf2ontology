@@ -13,11 +13,14 @@ class SegmentIdentificationTask(VotingTask, URDFLinkTask):
         self.json_format = """
 {
     "segmented_chains": {
-        "<EXACT_INPUT_CHAIN_KEY>": [
-            ["link_1", "link_2"],
-            ["link_3"],
-            ["link_4", "link_5"]
-        ]
+        "<EXACT_INPUT_CHAIN_KEY>": {
+            "justification": "Detailed anatomical or functional reasoning for this partition pattern.",
+            "segments": [
+                ["link_1", "link_2"],
+                ["link_3"],
+                ["link_4", "link_5"]
+            ]
+        }
     }
 }"""
 
@@ -26,23 +29,33 @@ class SegmentIdentificationTask(VotingTask, URDFLinkTask):
             "properties": {
                 "segmented_chains": {
                     "type": "object",
-                    "description": "A dictionary mapping each chain ID to an ordered list of anonymous segments.",
+                    "description": "A dictionary mapping each chain ID to its justification and ordered list of segments.",
                     "additionalProperties": {
-                        "type": "array",
-                        "description": "An ordered list of segments, where each segment is a contiguous array of link name strings.",
-                        "items": {
-                            "type": "array",
-                            "items": {"type": "string"}
-                        }
+                        "type": "object",
+                        "properties": {
+                            "justification": {
+                                "type": "string",
+                                "description": "Anatomical or functional rationale for why links were grouped this way."
+                            },
+                            "segments": {
+                                "type": "array",
+                                "description": "An ordered list of segments (contiguous link arrays).",
+                                "items": {
+                                    "type": "array",
+                                    "items": {"type": "string"}
+                                }
+                            }
+                        },
+                        "required": ["justification", "segments"],
+                        "additionalProperties": False
                     }
                 }
             },
             "required": ["segmented_chains"],
             "additionalProperties": False
         }
-    
+
     def ollama_json_schema(self) -> dict:
-        """Returns the JSON schema expected by Ollama / structured decoding."""
         return self.structured_format
 
     def system_prompt(self) -> str:
@@ -50,15 +63,17 @@ class SegmentIdentificationTask(VotingTask, URDFLinkTask):
 You are an expert in robot kinematics and URDF-to-Ontology abstraction.
 
 Task:
-Partition each provided chain of links into functional segments. A segment is a contiguous group of links representing a distinct anatomical or functional part.
+Partition each provided chain of links into functional segments. A segment is a contiguous group of links representing a distinct anatomical or functional part. For instance, severance links can compose a sub-component (segment) of a limb.
+Provide a clear 'justification' explaining the functional grouping rationale for each chain.
 """
         instruction_prompt = """ 
 Segmentation Rules:
 1. Exact Keys: Under "segmented_chains", you MUST use the EXACT keys provided in the input dictionary.
-2. Strict Link Scope: Partition ONLY the links listed in 'allowed_links_to_partition' for that specific key. Do NOT add external/parent links (e.g., 'torso_lift_link') if they are not in 'allowed_links_to_partition'.
+2. Strict Link Scope: Partition ONLY the links listed in 'allowed_links_to_partition'.
 3. Contiguity: Links in a segment MUST be contiguous in the exact order provided in 'allowed_links_to_partition'.
 4. Complete Coverage: Every link in 'allowed_links_to_partition' MUST appear in exactly one segment.
 5. Disjoint Segments: Links cannot overlap across multiple segments.
+6. Justification Required: Explain briefly why links were merged.
 """
 
         input_prompt = self.get_input_prompt(self.mode)
@@ -69,16 +84,13 @@ Respond strictly in JSON following this structure: {self.json_format}
 Do not include any extra text or markdown formatting."""
 
         return "".join([task_prompt, instruction_prompt, input_prompt, output_prompt])
-    
+
     def user_prompt(self, user_input: Dict[str, Any]) -> str:
         self.initial_chains = {}
         data_input = {}
         
         for key, identified_chain in user_input.items():
-            # Store base link chain for validation passes
             self.initial_chains[key] = identified_chain.link_chain 
-            
-            # Get kinematic chain payload
             kinematic_chain_payload = identified_chain.get_kinematic_chain(self.mode)
             
             data_input[key] = {
@@ -91,12 +103,12 @@ Do not include any extra text or markdown formatting."""
     Below are the kinematic chains for segment identification.
 
     CRITICAL INSTRUCTION: 
-    For each chain, you MUST ONLY partition the links explicitly listed under 'allowed_links_to_partition'. 
-    Do NOT include parent links like 'torso_lift_link' or base links unless they are explicitly present in 'allowed_links_to_partition'.
+    For each chain, partition ONLY the links explicitly listed under 'allowed_links_to_partition'. 
+    Include a concise 'justification' field explaining your structural/functional decisions.
 
     Input data:
     {json.dumps(data_input, indent=2)}"""
-    
+
     def interpret(self, output: dict) -> List[Dict[str, Any]]:
         valid_results: List[Dict[str, Any]] = []
         segmented_chains = output.get("segmented_chains", {})
@@ -106,8 +118,7 @@ Do not include any extra text or markdown formatting."""
 
         initial_keys = list(self.initial_chains.keys())
 
-        for idx, (chain_id, segments) in enumerate(segmented_chains.items()):
-            # 1. Primary Lookup by exact Key; Fallback by positional index
+        for idx, (chain_id, content) in enumerate(segmented_chains.items()):
             ref_chain = self.initial_chains.get(chain_id)
             target_key = chain_id
             
@@ -115,8 +126,13 @@ Do not include any extra text or markdown formatting."""
                 target_key = initial_keys[idx]
                 ref_chain = self.initial_chains[target_key]
 
-            if not ref_chain or not isinstance(segments, list):
-                print(f"[Validation Failed] Could not resolve chain key: {chain_id}")
+            if not ref_chain or not isinstance(content, dict):
+                continue
+
+            segments = content.get("segments", [])
+            justification = content.get("justification", "No justification provided.")
+
+            if not isinstance(segments, list):
                 continue
 
             valid_segments, used_links, is_valid = [], set(), True
@@ -126,61 +142,60 @@ Do not include any extra text or markdown formatting."""
                     is_valid = False
                     break
 
-                # Rule Check: Foreign links in segment
                 if not all(l in ref_chain for l in segment):
-                    print(f"[Validation Failed] {target_key}: Segment {segment} contains links not present in reference chain {ref_chain}")
                     is_valid = False
                     break
 
-                # Sort to preserve order relative to reference chain
                 sorted_links = sorted(segment, key=ref_chain.index)
                 indices = [ref_chain.index(l) for l in sorted_links]
                 
-                # Rule Check: Contiguity & Overlap
                 is_contiguous = all(idx2 - idx1 == 1 for idx1, idx2 in zip(indices, indices[1:]))
                 has_overlap = bool(used_links.intersection(sorted_links))
 
                 if not is_contiguous or has_overlap:
-                    print(f"[Validation Failed] {target_key}: Segment {segment} violates contiguity or overlaps.")
                     is_valid = False
                     break
 
                 used_links.update(sorted_links)
                 valid_segments.append({"links": sorted_links})
 
-            # Rule Check: Complete Coverage
-            if is_valid:
-                if used_links == set(ref_chain):
-                    valid_results.append({
-                        "chain_id": target_key, 
-                        "chain": ref_chain, 
-                        "identified_segments": valid_segments
-                    })
-                else:
-                    missing = set(ref_chain) - used_links
-                    print(f"[Validation Failed] {target_key}: Incomplete coverage. Missing links: {missing}")
+            if is_valid and used_links == set(ref_chain):
+                valid_results.append({"chain_id": target_key, "chain": ref_chain, "justification": justification,"identified_segments": valid_segments})
 
         print(f"Interpreted {len(valid_results)} validated anonymous partitions.")
         return valid_results
-    
+
     def aggregate(self, generations: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
-        """Simplified voting engine that directly reconstructs the winning segment pattern."""
-        chain_votes = defaultdict(list)
+        """Aggregates voting patterns while mapping the winning justification."""
+        chain_pattern_votes = defaultdict(lambda: defaultdict(int))
+        pattern_justifications = {}
 
         for gen in generations:
             for c in gen:
+                chain_id = c["chain_id"]
                 pattern = tuple(tuple(seg["links"]) for seg in c["identified_segments"])
-                chain_votes[c["chain_id"]].append(pattern)
+                
+                chain_pattern_votes[chain_id][pattern] += 1
+                # Store the most recent non-empty justification for this pattern
+                if c.get("justification"):
+                    pattern_justifications[(chain_id, pattern)] = c["justification"]
 
         final_chains = []
-        for chain_id, patterns in chain_votes.items():
-            if not patterns:
+        for chain_id, pattern_counts in chain_pattern_votes.items():
+            if not pattern_counts:
                 continue
 
-            winner_pattern = max(set(patterns), key=patterns.count)
+            # Pick the winning pattern with majority vote
+            winner_pattern = max(pattern_counts, key=pattern_counts.get)
+            winning_justification = pattern_justifications.get(
+                (chain_id, winner_pattern), 
+                "Consensus segment partition based on majority voting."
+            )
+
             final_chains.append({
                 "chain_id": chain_id,
                 "chain": self.initial_chains[chain_id],
+                "justification": winning_justification,
                 "identified_segments": [{"links": list(seg)} for seg in winner_pattern]
             })
 
