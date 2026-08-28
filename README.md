@@ -5,12 +5,12 @@ While symbolic reasoning over task allocation requires grounding a robot's physi
 # Project Structure
 ```
 ├── urdf2ontology/
-│   ├── urdf_models/   # Source URDF files
-│   ├── evaluation/    # Results with logs and OWL files
-│   ├── scripts/       # Scripts to run the abstraction process
-│       ├── tasks/     # folder containing each of the python file for the tasks
-│       └── main.py   # main python file to run the abstraction
-│   └── ontology/      # OWL/TTL files for the domain-expert ontology
+│   ├── urdf_models/     # Source URDF files
+│   ├── new_evaluation/  # Results with logs and OWL files
+│   ├── scripts/         # Scripts to run the abstraction process
+│       ├── tasks/       # folder containing each of the python file for the tasks
+│       └── main.py      # main python file to run the abstraction
+│   └── ontology/       # OWL/TTL files for the domain-expert ontology
 └── README.md
 ```
 
