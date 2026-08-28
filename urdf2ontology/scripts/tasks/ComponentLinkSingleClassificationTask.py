@@ -1,9 +1,8 @@
-from tasks.VotingTask import VotingTask
-from tasks.URDFLinkTask import URDFLinkTask
-
 from typing import Tuple, List, Dict, Any
 from collections import Counter, defaultdict
 import json
+from tasks.VotingTask import VotingTask
+from tasks.URDFLinkTask import URDFLinkTask
 
 
 class LinkClassificationTask(VotingTask, URDFLinkTask):
@@ -58,8 +57,10 @@ class ComponentLinkSingleClassificationTask(LinkClassificationTask):
         self.valid_types = [self.camel_case_keyword(keyword)]
         self.parent_context = self.camel_case_keyword(keyword)
         self.mode = mode
+        # Maintain lookup maps across batches
         self.initial_chains: Dict[str, Any] = {}
         self.key_aliases: Dict[str, str] = {}
+        self.current_batch_input_keys: List[str] = []
 
     def camel_case_keyword(self, keyword) -> str:
         words = keyword.split("_")
@@ -94,22 +95,23 @@ For each justification attribute, provide a single, self-sufficient, clear sente
 Do not include any extra text or markdown formatting."""
         
     def user_prompt(self, user_input: dict) -> str:
+        # Clear previous batch mappings to prevent cross-batch contamination
         self.initial_chains = {}
         self.key_aliases = {}
+        self.current_batch_input_keys = list(user_input.keys())
         data_input = {}
         
         for target_key, identified_comp in user_input.items():
-            # Support both object attributes and dictionary keys
             link_chain = getattr(identified_comp, "link_chain", None) or identified_comp.get("link_chain", [])
-            #attachment_root = getattr(identified_comp, "attachment_root", None) or identified_comp.get("attachment_root")
+            
             if isinstance(identified_comp, dict):
                 attachment_root = identified_comp.get("attachment_root")
             else:
                 attachment_root = getattr(identified_comp, "attachment_root", None)
-            # Store primary target chain
+                
             self.initial_chains[target_key] = link_chain
             
-            # Alias mapping: map primary ID, link frames, and end links back to the target_key
+            # Map primary ID and sub-links back to canonical target_key
             self.key_aliases[target_key] = target_key
             for link in link_chain:
                 self.key_aliases[link] = target_key
@@ -118,7 +120,6 @@ Do not include any extra text or markdown formatting."""
             if end_link:
                 self.key_aliases[end_link] = target_key
 
-            # Get kinematic chain payload
             if hasattr(identified_comp, "get_kinematic_chain"):
                 kin_chain = identified_comp.get_kinematic_chain(self.mode)
             else:
@@ -159,12 +160,11 @@ Input data:
             if not raw_item_id or not assigned_type:
                 continue
 
-            # Resolve key via alias table if LLM used URDF link name instead of segment/branch ID
             canonical_id = self.key_aliases.get(raw_item_id)
 
             if canonical_id and canonical_id in self.initial_chains:
                 if canonical_id in processed_canonical_keys:
-                    continue  # Prevent duplicate mappings if LLM lists both link and segment ID
+                    continue  
                     
                 if assigned_type in self.valid_types:
                     results.append((canonical_id, assigned_type))
@@ -187,11 +187,15 @@ Input data:
         final_consensus: Dict[str, str] = {}
         majority_threshold = (len(votes) // 2) + 1 if len(votes) > 1 else 1
 
-        for link, types in per_link_votes.items():
+        # Ensure all items present in the input batch are aggregated (even if missing from responses)
+        all_target_keys = set(self.current_batch_input_keys) | set(per_link_votes.keys())
+
+        for link in all_target_keys:
+            types = per_link_votes.get(link, [])
             most_common_data = Counter(types).most_common(1)
             
             if not most_common_data:
-                final_consensus[link] = f"Unknown{self.parent_context}"
+                final_consensus[link] = self.parent_context
                 continue
                 
             most_common, count = most_common_data[0]
@@ -199,7 +203,7 @@ Input data:
             if count >= majority_threshold:
                 final_consensus[link] = most_common
             else:
-                fallback_type = f"Unknown{self.parent_context}"
+                fallback_type = self.parent_context
                 print(f"[CONSENSUS SPLIT] Target '{link}' had unstable votes: {dict(Counter(types))}. Falling back to '{fallback_type}'")
                 final_consensus[link] = fallback_type
         
