@@ -32,7 +32,7 @@ if __name__ == '__main__':
     eval_models = ['iCubGazeboV2_10.urdf', 'ingenuity.urdf', 'rbvogui_plus.urdf', 'pr2_standard.urdf', 'solo.urdf']
 
     # Select the index of the model to abstract
-    robot_path_string = URDF_DIR + "/" + eval_models[5]
+    robot_path_string = URDF_DIR + "/" + eval_models[0]
     
     robot_name = robot_path_string.split('/')[-1].split('.')[0]
 
