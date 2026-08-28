@@ -18,7 +18,7 @@ While symbolic reasoning over task allocation requires grounding a robot's physi
 ```
 1. pip install ollama (or create a virtual environment with ollama)
 2. install ontologenius from the dedicated github repository ([link](https://github.com/sarthou/ontologenius))
-3. Load the URDF files in urdf2ontology/urdf2ontology/urdf/ folder
+3. Load the URDF files in urdf2ontology/urdf2ontology/urdf_models/ folder
 4. Add their paths to the main.py
 5. Run ontologenius with ros2 launch ontologenius ontologeniu_empty.xml
 6. Run the main loop with python3 main.py
