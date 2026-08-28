@@ -15,14 +15,14 @@ class LinkIdentificationTask(VotingTask):
         "{self.keyword}_0": {{"link_name": "string", "justification": "string"}}
     }}
 }}
-"""
+"""   
         self.structured_format = {
     "type": "object",
     "properties": {
         "identifications": {
             "type": "object",
             "description": "Mapping of identified targets to their link name and justification.",
-            "minProperties": 1,  # <--- FORCES AT LEAST 1 ITEM TO BE GENERATED
+            "minProperties": 1,
             "additionalProperties": {
                 "type": "object",
                 "properties": {
@@ -38,8 +38,25 @@ class LinkIdentificationTask(VotingTask):
     "additionalProperties": False
 }
         
+        self.category_definitions = {
+    "sensor": (
+        "Devices, transducers, or sub-assemblies dedicated to perceiving physical parameters or environmental interaction forces."
+    ),
+    "end_effector": (
+        "Manipulation hardware linked to physical interaction with objects or the workspace, that is not used for locomotion."
+    ),
+    "locomotion": (
+        "Structural or active kinematic components directly involved in moving the robot through its environment."
+    ),
+    "body_part": (
+        "Structural links or articulated limb segments that provide physical support linkage, or enclosure for the robot's physical interaction with the environment."
+    )
+}
     def ollama_json_schema(self):
         return self.structured_format
+    
+    def get_category_definition(self):
+        return self.category_definitions[self.keyword]
 
 class ComponentLinkIdentificationTask(LinkIdentificationTask):
 
@@ -49,7 +66,10 @@ class ComponentLinkIdentificationTask(LinkIdentificationTask):
     def system_prompt(self) -> str:
         simple_prompt = f"""
 You are an expert in robot kinematics and URDF-to-Ontology abstraction.
-Task: You will be provided with a list of leaf links coming from an URDF model. Identify all URDF leaf links that represent or belong to a {self.keyword} instance, as functional origins, internal assemblies or interaction frames. 
+Task: You will be provided with a list of leaf links coming from an URDF model. Identify all URDF leaf links that represent or belong to a {self.keyword} instance, as functional origins, internal assemblies or interaction frames. You should not select any link that corresponds to visual, collision or dummy frames.
+
+Definition:
+{self.get_category_definition()}
 
 Input Format: 
 List of URDF leaf links: ["leaf_1", "leaf_2", ...]
