@@ -23,3 +23,15 @@ While symbolic reasoning over task allocation requires grounding a robot's physi
 5. Run ontologenius with ros2 launch ontologenius ontologeniu_empty.xml
 6. Run the main loop with python3 main.py
 ```
+## Citation
+If you use this work in your research, please cite the following paper as below:
+
+BibTeX:
+```bibtex
+@article{dussard2026taxonomy,
+  title={Taxonomy-Agnostic Neurosymbolic Grounding of Robot Kinematics}, 
+  author={Dussard, Bastien and Clodic, Aur{\'e}lie and Sarthou, Guillaume},
+  booktitle={Proceedings of the AAAI Fall Symposium Series, UR-RAD (Unifying Representations for Robot Application Development)}, 
+  year={2026},
+  note = {accepted for publication}
+} 
