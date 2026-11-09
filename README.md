@@ -29,9 +29,14 @@ If you use this work in your research, please cite the following paper as below:
 BibTeX:
 ```bibtex
 @article{dussard2026taxonomy,
-  title={Taxonomy-Agnostic Neurosymbolic Grounding of Robot Kinematics}, 
-  author={Dussard, Bastien and Clodic, Aur{\'e}lie and Sarthou, Guillaume},
-  booktitle={Proceedings of the AAAI Fall Symposium Series, UR-RAD (Unifying Representations for Robot Application Development)}, 
+  title={Taxonomy-Agnostic Neurosymbolic Grounding of Robot Kinematics},
+  author={Dussard, Bastien and Clodic, Aurélie and Sarthou, Guillaume},
+  journal={Proceedings of the AAAI Symposium Series},
+  url={https://ojs.aaai.org/index.php/AAAI-SS/article/view/43504},
+  DOI={10.1609/aaaiss.v10i1.43504},
+  number={1},
+  volume={10},
   year={2026},
-  note = {accepted for publication}
-} 
+  month={Nov.},
+  pages={895–903}
+}
